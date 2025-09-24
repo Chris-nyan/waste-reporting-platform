@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =======================================
+// CORE MULTI-TENANCY MODEL
+// =======================================
+model Tenant {
+  id                    String    @id @default(cuid())
+  companyName           String
+  logoUrl               String?
+  primaryColor          String?   @default("#000000")
+  
+  // ++ NEW FIELDS FOR SUPER ADMIN MANAGEMENT ++
+  status                TenantStatus @default(ACTIVE) // To pause/resume services
+  subscriptionExpiresAt DateTime?                    // To track subscription end dates
+
+  users                 User[]
+  clients               Client[]
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+// =======================================
+// AUTHENTICATION & USERS
+// =======================================
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  
+  // ++ ROLE ENUM IS UPDATED ++
+  role      Role     @default(MEMBER)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ++ RELATION TO TENANT IS NOW OPTIONAL ++
+  // A Super Admin will have a null tenantId
+  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId  String?
+
+  createdClients   Client[]
+  createdWasteData WasteData[]
+  createdReports   Report[]
+
+  @@index([tenantId])
+}
+
+// Other models (Client, WasteData, Report) remain the same...
+
+model Client {
+  id             String      @id @default(cuid())
+  companyName    String
+  contactPerson  String?
+  email          String?
+  phone          String?
+  address        String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId       String
+  createdBy      User        @relation(fields: [createdById], references: [id])
+  createdById    String
+  wasteData      WasteData[]
+  reports        Report[]
+  @@index([tenantId])
+}
+
+model WasteData {
+  id           String    @id @default(cuid())
+  wasteType    String
+  quantity     Float
+  unit         WasteUnit
+  recycledDate DateTime
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId     String
+  createdBy    User      @relation(fields: [createdById], references: [id])
+  createdById  String
+  @@index([clientId])
+}
+
+model Report {
+  id                  String   @id @default(cuid())
+  startDate           DateTime
+  endDate             DateTime
+  recyclingTechnology String
+  vehicleType         String
+  pickupDate          DateTime
+  logisticsEmissions  Float
+  recyclingEmissions  Float
+  avoidedEmissions    Float
+  netImpact           Float
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  client              Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId            String
+  createdBy           User     @relation(fields: [createdById], references: [id])
+  createdById         String
+  @@index([clientId])
+}
+
+// =======================================
+// ENUMS FOR DATA CONSISTENCY
+// =======================================
+enum Role {
+  SUPER_ADMIN // ++ NEW PLATFORM-LEVEL ROLE ++
+  ADMIN       // Tenant-level admin
+  MEMBER      // Tenant-level member
+}
+
+// ++ NEW ENUM FOR TENANT STATUS ++
+enum TenantStatus {
+  ACTIVE
+  PAUSED
+  CANCELED
+}
+
+enum WasteUnit {
+  KG
+  TONNE
+  POUNDS
+}

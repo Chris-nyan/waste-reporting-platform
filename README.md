@@ -60,12 +60,18 @@ Creating a feature branch for Tenant Portal:
 git checkout develop-tenant
 git pull origin develop-tenant
 git checkout -b feature/<your-feature-name>
+(Write Code)
+git push origin feature/<your-feature-name> (After writing code)
+Do PR request to the develop-tenant
 
 Creating a feature branch for Super Admin Portal:
 
 git checkout develop-superadmin
 git pull origin develop-superadmin
 git checkout -b feature/<your-feature-name>
+(Write Code)
+git push origin feature/<your-feature-name> (After writing code)
+Do PR request to the develop-superadmin
 
 Workflow:
 	1.	Start from the correct develop branch (develop-tenant or develop-superadmin).

@@ -11,9 +11,8 @@ async function main() {
   const hashedPassword = await bcrypt.hash('password123', salt);
 
   // --- CLEAN UP EXISTING DATA ---
-  // The order of deletion is important to avoid foreign key constraint errors
-  await prisma.wasteData.deleteMany();
   await prisma.report.deleteMany();
+  await prisma.wasteData.deleteMany();
   await prisma.client.deleteMany();
   await prisma.user.deleteMany();
   await prisma.tenant.deleteMany();
@@ -29,7 +28,7 @@ async function main() {
   });
   console.log(`Created tenant: ${tenant1.companyName}`);
 
-  // --- CREATE USER FOR TENANT 1 ---
+  // --- CREATE USERS FOR TENANT 1 ---
   const adminUser1 = await prisma.user.create({
     data: {
       email: 'admin@ecosolutions.com',
@@ -63,14 +62,63 @@ async function main() {
   });
   console.log('Created clients for EcoSolutions Inc.');
   
-  // --- CREATE WASTE DATA FOR TENANT 1's CLIENTS ---
+  // --- CREATE WASTE DATA FOR TENANT 1's CLIENTS (WITH NEW FIELDS) ---
   await prisma.wasteData.createMany({
     data: [
-      { wasteType: 'Cardboard', quantity: 550.5, unit: 'KG', recycledDate: new Date(), clientId: client1_1.id, createdById: adminUser1.id },
-      { wasteType: 'PET Plastic', quantity: 230.0, unit: 'KG', recycledDate: new Date(), clientId: client1_1.id, createdById: adminUser1.id },
-      { wasteType: 'Aluminum', quantity: 75.2, unit: 'KG', recycledDate: new Date(), clientId: client1_2.id, createdById: adminUser1.id },
+      { 
+        wasteCategory: 'Paper',
+        wasteType: 'Cardboard', 
+        quantity: 550.5, 
+        unit: 'KG', 
+        recycledDate: new Date(), 
+        clientId: client1_1.id, 
+        createdById: adminUser1.id,
+        
+        // New fields
+        recyclingTechnology: 'Mechanical Recycling',
+        vehicleType: 'Heavy-duty truck',
+        pickupDate: new Date(),
+        pickupAddress: '123 Main St, City A',
+        facilityAddress: 'Recycling Plant A',
+        distanceKm: 12.4,
+        imageUrl: 'https://example.com/cardboard.jpg'
+      },
+      { 
+        wasteCategory: 'Plastic',
+        wasteType: 'PET Plastic', 
+        quantity: 230.0, 
+        unit: 'KG', 
+        recycledDate: new Date(), 
+        clientId: client1_1.id, 
+        createdById: adminUser1.id,
+        
+        recyclingTechnology: 'Chemical Recycling',
+        vehicleType: 'Light-duty truck',
+        pickupDate: new Date(),
+        pickupAddress: '456 Side Rd, City B',
+        facilityAddress: 'Recycling Plant B',
+        distanceKm: 8.7,
+        imageUrl: 'https://example.com/pet-plastic.jpg'
+      },
+      { 
+        wasteCategory: 'Metal',
+        wasteType: 'Aluminum', 
+        quantity: 75.2, 
+        unit: 'KG', 
+        recycledDate: new Date(), 
+        clientId: client1_2.id, 
+        createdById: adminUser1.id,
+        
+        recyclingTechnology: 'Smelting',
+        vehicleType: 'Light-duty truck',
+        pickupDate: new Date(),
+        pickupAddress: '789 Industrial Rd, City C',
+        facilityAddress: 'Metal Recovery Facility',
+        distanceKm: 20.1,
+        imageUrl: 'https://example.com/aluminum.jpg'
+      },
     ]
-  });
+  })
   console.log('Created waste data for EcoSolutions Inc.');
   
   console.log('---');
@@ -109,26 +157,36 @@ async function main() {
   });
   console.log('Created clients for GreenWorks Logistics.');
 
-  // --- CREATE WASTE DATA FOR TENANT 2's CLIENT ---
+  // --- CREATE WASTE DATA FOR TENANT 2's CLIENT (WITH NEW FIELDS) ---
   await prisma.wasteData.createMany({
     data: [
-      { wasteType: 'Glass', quantity: 1.2, unit: 'TONNE', recycledDate: new Date(), clientId: client2_1.id, createdById: adminUser2.id },
+      { 
+        wasteType: 'Glass', 
+        quantity: 1.2, 
+        unit: 'TONNE', 
+        recycledDate: new Date(), 
+        clientId: client2_1.id, 
+        createdById: adminUser2.id,
+        recyclingTechnology: 'Cullet Processing',
+        vehicleType: 'Heavy-duty truck',
+        pickupDate: new Date(),
+      },
     ]
   });
-  // --- CREATE SUPER ADMIN USER ---
-  await prisma.user.create({
-  data: {
-    email: 'IT@recyglo.com',
-    name: 'RecyGlo',
-    password: hashedPassword,
-    role: 'SUPER_ADMIN',
-    // tenantId is null by default
-  },
-});
   console.log('Created waste data for GreenWorks Logistics.');
   
+  // --- CREATE SUPER ADMIN USER ---
+  await prisma.user.create({
+    data: {
+      email: 'superadmin@platform.com', // Changed email for clarity
+      name: 'Platform Admin',
+      password: hashedPassword,
+      role: 'SUPER_ADMIN',
+    },
+  });
+  console.log('Created Super Admin user.');
+
   console.log('Seeding finished.');
-  
 }
 
 main()

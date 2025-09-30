@@ -73,20 +73,36 @@ model Client {
   @@index([tenantId])
 }
 
+// Stores individual records of recycled waste for a Client.
 model WasteData {
-  id           String    @id @default(cuid())
-  wasteType    String
-  quantity     Float
-  unit         WasteUnit
-  recycledDate DateTime
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId     String
-  createdBy    User      @relation(fields: [createdById], references: [id])
-  createdById  String
-  @@index([clientId])
-}
+      id                  String    @id @default(cuid())
+      // --- NEW & UPDATED FIELDS ---
+      wasteCategory       String?   // e.g., "Plastic", "Paper"
+      wasteType           String    // e.g., "PET", "Corrugated Cardboard"
+      
+      quantity            Float
+      unit                WasteUnit
+      recycledDate        DateTime
+      recyclingTechnology String?
+      
+      // --- NEW LOGISTICS FIELDS ---
+      pickupAddress       String?
+      facilityAddress     String?
+      distanceKm          Float?    // Calculated distance in kilometers
+      
+      vehicleType         String?
+      pickupDate          DateTime?
+      imageUrl            String[]
+
+      createdAt           DateTime  @default(now())
+      updatedAt           DateTime  @updatedAt
+
+      client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+      clientId            String
+      createdBy           User      @relation(fields: [createdById], references: [id])
+      createdById         String
+      @@index([clientId])
+    }
 
 model Report {
   id                  String   @id @default(cuid())
@@ -126,6 +142,9 @@ enum TenantStatus {
 
 enum WasteUnit {
   KG
-  TONNE
-  POUNDS
+  G
+  T
+  LB
+  TONNE  // Keeping this for backward compatibility
+  POUNDS // Keeping this for backward compatibility
 }

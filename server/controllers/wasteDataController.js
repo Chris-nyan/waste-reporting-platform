@@ -45,15 +45,18 @@ const unitToKg = {
  * @access  Private
  */
 const createWasteEntry = async (req, res) => {
-  // With multer, text fields are correctly populated in req.body
+  // --- DEBUGGING: Log the incoming request body from the frontend ---
+  console.log("Backend received body:", req.body);
+  console.log("Backend received files:", req.files);
+  
   const {
     clientId,
-    wasteCategory,
-    wasteType,
+    wasteCategoryId,
+    wasteTypeId,
     quantity,
     unit,
     recycledDate,
-    recyclingTechnology,
+    recyclingTechnologyId,
     pickupAddress,
     facilityAddress,
     distanceKm,
@@ -61,12 +64,13 @@ const createWasteEntry = async (req, res) => {
     pickupDate,
   } = req.body;
 
-  if (!clientId || !wasteType || !quantity || !unit || !recycledDate) {
-    return res.status(400).json({ message: 'Missing required fields.' });
+  if (!clientId || !wasteTypeId || !quantity || !unit || !recycledDate) {
+    console.error("Validation Failed. Missing one or more required fields.");
+    console.error({ clientId, wasteTypeId, quantity, unit, recycledDate });
+    return res.status(400).json({ message: 'Missing required fields. Please check server logs for details.' });
   }
 
   try {
-    // Security check: Ensure the client belongs to the user's tenant
     const client = await prisma.client.findFirst({
       where: { id: clientId, tenantId: req.user.tenantId },
     });
@@ -76,47 +80,49 @@ const createWasteEntry = async (req, res) => {
     }
     
     let imageUrl = [];
-    // Handle multiple file fields from multer in req.files
     if (req.files) {
       const wasteImages = req.files['wasteImages'] || [];
       const recyclingImages = req.files['recyclingImages'] || [];
       const allFiles = [...wasteImages, ...recyclingImages];
-
-      // ----- Local Upload (default active) -----
-      // Creates a public path to the uploaded files
       imageUrl = allFiles.map(file => `/uploads/${file.filename}`);
-      
-      // ----- AWS S3 Upload (optional, uncomment to use S3) -----
-      // const uploadPromises = allFiles.map(file => uploadToS3(file));
-      // imageUrl = await Promise.all(uploadPromises);
     }
 
-    // Convert quantity to a universal unit (KG) on the backend
     const quantityInKg = parseFloat(quantity) * (unitToKg[unit] || 1);
 
     const newWasteEntry = await prisma.wasteData.create({
       data: {
-        clientId,
-        wasteCategory,
-        wasteType,
-        quantity: quantityInKg, // Always store the value in KG
-        unit: unit, // Store the original unit for display purposes
+        // --- THIS IS THE CRITICAL FIX ---
+        // Instead of providing clientId directly, we use 'connect'
+        // to establish the relation to the existing Client record.
+        client: {
+          connect: { id: clientId }
+        },
+        createdBy: {
+          connect: { id: req.user.userId }
+        },
+        wasteType: {
+          connect: { id: wasteTypeId }
+        },
+        ...(recyclingTechnologyId && { 
+            recyclingTechnology: { 
+                connect: { id: recyclingTechnologyId } 
+            } 
+        }),
+        quantity: quantityInKg,
+        unit: unit,
         recycledDate: new Date(recycledDate),
-        recyclingTechnology,
         pickupAddress,
         facilityAddress,
         distanceKm: distanceKm ? parseFloat(distanceKm) : null,
         vehicleType,
         pickupDate: pickupDate ? new Date(pickupDate) : null,
-        imageUrl, // Save the array of image paths/URLs
-        createdById: req.user.userId,
+        imageUrl,
       },
     });
 
     res.status(201).json(newWasteEntry);
   } catch (error) {
     console.error("Error creating waste entry:", error);
-    // In a real app, you might want to clean up uploaded files if the DB transaction fails
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -127,26 +133,120 @@ const createWasteEntry = async (req, res) => {
  * @access  Private
  */
 const getWasteEntriesForClient = async (req, res) => {
-  try {
-    const { clientId } = req.params;
+    // This function will also be updated to return the full related data
+    try {
+        const { clientId } = req.params;
+        const client = await prisma.client.findFirst({
+            where: { id: clientId, tenantId: req.user.tenantId },
+        });
+        if (!client) {
+            return res.status(404).json({ message: 'Client not found.' });
+        }
+        const wasteEntries = await prisma.wasteData.findMany({
+            where: { clientId },
+            orderBy: { recycledDate: 'desc' },
+            include: {
+                wasteType: { include: { category: true } },
+                recyclingTechnology: true,
+            }
+        });
+        // Remap data to be more frontend friendly
+        const formattedEntries = wasteEntries.map(entry => ({
+            ...entry,
+            wasteCategory: entry.wasteType.category.name,
+            wasteType: entry.wasteType.name,
+            recyclingTechnology: entry.recyclingTechnology?.name || null,
+        }));
+        res.json(formattedEntries);
+    } catch (error) {
+        console.error("Error fetching waste entries:", error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
-    const client = await prisma.client.findFirst({
-      where: { id: clientId, tenantId: req.user.tenantId },
+/**
+ * @desc    Update an existing waste data entry
+ * @route   PUT /api/waste-data/:id
+ * @access  Private
+ */
+const updateWasteEntry = async (req, res) => {
+  const { id } = req.params;
+  const {
+    pickupDate,
+    wasteCategoryId, // Not directly used, but good to get
+    wasteTypeId,
+    quantity,
+    unit,
+    recycledDate,
+    recyclingTechnologyId,
+    vehicleType,
+    pickupAddress,
+    facilityAddress,
+    distanceKm,
+  } = req.body;
+
+  try {
+    // Security check: ensure the entry belongs to the user's tenant
+    const existingEntry = await prisma.wasteData.findFirst({
+      where: { id, client: { tenantId: req.user.tenantId } },
     });
 
-    if (!client) {
-      return res.status(404).json({ message: 'Client not found or you do not have permission.' });
+    if (!existingEntry) {
+      return res.status(404).json({ message: 'Waste entry not found or you do not have permission.' });
     }
 
-    const wasteEntries = await prisma.wasteData.findMany({
-      where: { clientId },
-      orderBy: { recycledDate: 'desc' },
+    const updatedEntry = await prisma.wasteData.update({
+      where: { id },
+      data: {
+        pickupDate: pickupDate ? new Date(pickupDate) : undefined,
+        wasteTypeId: wasteTypeId,
+        quantity: quantity ? parseFloat(quantity) : undefined,
+        unit: unit,
+        recycledDate: recycledDate ? new Date(recycledDate) : undefined,
+        recyclingTechnologyId: recyclingTechnologyId,
+        vehicleType: vehicleType,
+        pickupAddress: pickupAddress,
+        facilityAddress: facilityAddress,
+        distanceKm: distanceKm ? parseFloat(distanceKm) : undefined,
+      },
     });
 
-    res.json(wasteEntries);
+    res.json(updatedEntry);
   } catch (error) {
-    console.error("Error fetching waste entries:", error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("Error updating waste entry:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+/**
+ * @desc    Delete a waste data entry
+ * @route   DELETE /api/waste-data/:id
+ * @access  Private
+ */
+const deleteWasteEntry = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Security check
+    const existingEntry = await prisma.wasteData.findFirst({
+      where: { id, client: { tenantId: req.user.tenantId } },
+    });
+
+    if (!existingEntry) {
+      return res.status(404).json({ message: 'Waste entry not found or you do not have permission.' });
+    }
+    
+    // In production, you would also delete associated images from cloud storage here
+    // existingEntry.imageUrls.forEach(url => deleteFromS3(url));
+
+    await prisma.wasteData.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Waste entry deleted successfully' });
+  } catch (error) {
+    console.error("Error deleting waste entry:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -154,5 +254,6 @@ const getWasteEntriesForClient = async (req, res) => {
 module.exports = {
   createWasteEntry,
   getWasteEntriesForClient,
+  updateWasteEntry,
+  deleteWasteEntry,
 };
-

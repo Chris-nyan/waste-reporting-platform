@@ -74,54 +74,116 @@ model Client {
 }
 
 // Stores individual records of recycled waste for a Client.
+model WasteCategory {
+  id    String @id @default(cuid())
+  name  String @unique
+  types WasteType[]
+}
+
+model WasteType {
+  id          String @id @default(cuid())
+  name        String
+  category    WasteCategory @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  wasteData   WasteData[]
+}
+
+model RecyclingTechnology {
+  id        String @id @default(cuid())
+  name      String @unique
+  wasteData WasteData[]
+}
+
+
+// =======================================
+// UPDATED WasteData MODEL
+// =======================================
 model WasteData {
-      id                  String    @id @default(cuid())
-      // --- NEW & UPDATED FIELDS ---
-      wasteCategory       String?   // e.g., "Plastic", "Paper"
-      wasteType           String    // e.g., "PET", "Corrugated Cardboard"
-      
-      quantity            Float
-      unit                WasteUnit
-      recycledDate        DateTime
-      recyclingTechnology String?
-      
-      // --- NEW LOGISTICS FIELDS ---
-      pickupAddress       String?
-      facilityAddress     String?
-      distanceKm          Float?    // Calculated distance in kilometers
-      
-      vehicleType         String?
-      pickupDate          DateTime?
-      imageUrl            String[]
+  id                  String    @id @default(cuid())
+  wasteType           WasteType @relation(fields: [wasteTypeId], references: [id])
+  wasteTypeId         String
 
-      createdAt           DateTime  @default(now())
-      updatedAt           DateTime  @updatedAt
+  quantity            Float
+  unit                String    
+  recycledDate        DateTime
+  
+  recyclingTechnology RecyclingTechnology? @relation(fields: [recyclingTechnologyId], references: [id])
+  recyclingTechnologyId String?
+  
+  // --- Logistics ---
+  pickupAddress       String?
+  facilityAddress     String?
+  distanceKm          Float?
+  vehicleType         String?
+  pickupDate          DateTime?
+  imageUrl           String[]  @default([])
 
-      client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-      clientId            String
-      createdBy           User      @relation(fields: [createdById], references: [id])
-      createdById         String
-      @@index([clientId])
-    }
-
-model Report {
-  id                  String   @id @default(cuid())
-  startDate           DateTime
-  endDate             DateTime
-  recyclingTechnology String
-  vehicleType         String
-  pickupDate          DateTime
-  logisticsEmissions  Float
-  recyclingEmissions  Float
-  avoidedEmissions    Float
-  netImpact           Float
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  client              Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId            String
-  createdBy           User     @relation(fields: [createdById], references: [id])
+  createdBy           User      @relation(fields: [createdById], references: [id])
   createdById         String
   @@index([clientId])
+}
+
+// =======================================
+// NEW: REPORTING MODELS
+// =======================================
+
+// Stores a generated report and all its configuration
+model Report {
+  id                  String    @id @default(cuid())
+  
+  // Configuration from the wizard
+  reportTitle         String    @default("Waste Management & Sustainability Report")
+  coverImageUrl       String?
+  logoUrl             String?
+  startDate           DateTime
+  endDate             DateTime
+  includedWasteTypes  String[] // Stores an array of the waste types selected for this report
+  
+  // Stored answers to the comprehensive questions
+  questions           ReportQuestion[]
+
+  // Stored calculated results
+  totalWeightRecycled Float
+  emissionsAvoided    Float
+  logisticsEmissions  Float
+  recyclingEmissions  Float
+  netImpact           Float
+  
+  generatedAt         DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId            String
+  createdBy           User      @relation(fields: [createdById], references: [id])
+  createdById         String
+  
+  @@index([clientId])
+}
+
+// Stores the question and answer pairs for each report
+model ReportQuestion {
+    id          String @id @default(cuid())
+    questionText String
+    answerText  String
+    report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+    reportId    String
+}
+
+
+// =======================================
+// NEW MASTER DATA MODEL FOR QUESTIONS
+// =======================================
+
+model MasterReportQuestion {
+  id           String  @id @default(cuid())
+  text         String  @unique
+  displayOrder Int     @default(0) // To control the order they appear in the form
+  isActive     Boolean @default(true) // To allow disabling questions without deleting
 }
 
 // =======================================

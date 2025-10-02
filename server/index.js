@@ -8,6 +8,8 @@ const dashboardRoutes = require('./routes/dashboardRoutes.js');
 const clientRoutes = require('./routes/clientRoutes.js');
 const wasteRoutes = require('./routes/wasteRoutes.js');
 const logisticRoutes = require('./routes/logisticRoutes.js');
+const masterRoutes = require('./routes/masterRoutes.js');
+const reportRoutes = require('./routes/reportRoutes.js');
 
 // Load environment variables
 dotenv.config();
@@ -25,11 +27,13 @@ app.use(express.json());
 
 // --- API Routes ---
 // Only include the authentication routes for now
+app.use('/api/master-data', masterRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/waste-data', wasteRoutes);
 app.use('/api/logistics', logisticRoutes);
+app.use('/api/reports', reportRoutes);
 
 
 

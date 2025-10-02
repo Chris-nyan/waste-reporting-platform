@@ -131,7 +131,6 @@ model WasteData {
 // NEW: REPORTING MODELS
 // =======================================
 
-// Stores a generated report and all its configuration
 model Report {
   id                  String    @id @default(cuid())
   
@@ -141,17 +140,25 @@ model Report {
   logoUrl             String?
   startDate           DateTime
   endDate             DateTime
-  includedWasteTypes  String[] // Stores an array of the waste types selected for this report
+  includedWasteTypes  String[]  // Stores an array of the waste types selected for this report
   
   // Stored answers to the comprehensive questions
   questions           ReportQuestion[]
 
-  // Stored calculated results
+  // --- Stored calculated results ---
   totalWeightRecycled Float
   emissionsAvoided    Float
   logisticsEmissions  Float
   recyclingEmissions  Float
   netImpact           Float
+
+  
+  diversionRate         Float?
+  totalWasteGenerated   Float?
+  carsOffRoadEquivalent Float?
+  treesSaved            Float?
+  landfillSpaceSaved    Float?
+  // --------------------------
   
   generatedAt         DateTime  @default(now())
   updatedAt           DateTime  @updatedAt

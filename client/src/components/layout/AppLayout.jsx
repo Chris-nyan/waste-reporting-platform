@@ -71,7 +71,7 @@ const AppLayout = () => {
         {!isCollapsed && (
           <Link to="/dashboard" className="flex items-center gap-2 font-semibold">
             <Package2 className="h-6 w-6 text-emerald-600" />
-            <span className="text-gray-800">Company Name</span>
+            <span className="text-gray-800">Wongpanit </span>
           </Link>
         )}
         <button onClick={toggleSidebar} className="p-2 rounded-full hover:bg-gray-100 transition-colors hidden lg:block">

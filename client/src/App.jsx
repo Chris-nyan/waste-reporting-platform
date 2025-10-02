@@ -71,7 +71,7 @@ function App() {
             <Route path="/app/clients/:clientId" element={<ClientDetailPage />} />
             <Route path="/app/reports" element={<ReportsPage />} />
             <Route path="/app/reports/generate" element={<GenerateReportPage />} />
-            <Route path="/app/reports/preview/:reportId" element={<ReportPreviewPage />} />
+            <Route path="/app/reports/preview/:id" element={<ReportPreviewPage />} />
 
 
 

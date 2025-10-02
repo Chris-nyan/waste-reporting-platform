@@ -6,6 +6,7 @@ const {
     getReportConfigData,
     getWasteTypesForPeriod,
     getReportById,
+    downloadReport
 } = require('../controllers/reportController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -20,6 +21,10 @@ router.get('/config-data', protect, getReportConfigData);
 
 // Route to get available waste types based on client and date range
 router.post('/waste-types', protect, getWasteTypesForPeriod);
+
+router.route('/:id').get(protect, getReportById);
+
+router.route('/:id/download').get(protect, downloadReport); // The download route
 
 router.get('/:id', protect, getReportById);
 

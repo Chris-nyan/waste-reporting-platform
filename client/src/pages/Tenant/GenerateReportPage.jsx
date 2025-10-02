@@ -25,6 +25,8 @@ const STEPS = [
     { id: 4, title: 'Generate' }
 ];
 
+
+
 const ImageUploadField = ({ form, name, label, icon: Icon }) => {
     const { control, watch, setValue } = form;
     const file = watch(name);
@@ -320,12 +322,28 @@ const GenerateReportPage = () => {
     const onSubmit = async (data) => {
         setIsLoading(true);
         try {
-            const payload = { ...data, startDate: data.dateRange.from, endDate: data.dateRange.to };
-            await api.post('/reports/generate', payload);
+            // --- FIX: Manually get the latest values from the form state ---
+            const allFormData = form.getValues();
+
+            const payload = {
+                ...allFormData, // Use the complete form data
+                startDate: allFormData.dateRange.from,
+                endDate: allFormData.dateRange.to
+            };
+            // --- END FIX ---
+
+            console.log("--- SENDING PAYLOAD FROM FRONTEND ---");
+            console.log(JSON.stringify(payload, null, 2));
+
+            const response = await api.post('/reports/generate', payload);
+            const newReport = response.data;
+
             toast.success("Report generated successfully!");
-            navigate('/app/reports');
+            navigate(`/app/reports/preview/${newReport.id}`);
+
         } catch (err) {
             toast.error("Failed to generate report.");
+            console.error("Submission Error:", err);
         } finally {
             setIsLoading(false);
         }

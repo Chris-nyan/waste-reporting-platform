@@ -114,7 +114,7 @@ const ClientsPage = () => {
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
                                   <Link to={`/app/clients/${client.id}`} className="cursor-pointer">
-                                    <Eye className="mr-2 h-4 w-4" /> View Details
+                                    <Eye className="mr-2 h-4 w-4" /> Waste Data
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => setClientToEdit(client)} className="cursor-pointer">

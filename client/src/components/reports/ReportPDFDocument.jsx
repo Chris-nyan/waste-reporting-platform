@@ -7,270 +7,210 @@ import LatoRegular from '/fonts/Lato-Regular.ttf';
 import LatoBold from '/fonts/Lato-Bold.ttf';
 
 Font.register({ family: 'Oswald', src: OswaldBold });
-Font.register({
-    family: 'Lato',
-    fonts: [
-        { src: LatoRegular },
-        { src: LatoBold, fontWeight: 'bold' }
-    ]
-});
+Font.register({ family: 'Lato', fonts: [{ src: LatoRegular }, { src: LatoBold, fontWeight: 'bold' }]});
 
 // --- Theme Colors ---
 const colors = {
-    primary: '#1a3a32',
-    secondary: '#5f9e8f',
-    accent: '#346154',
-    textPrimary: '#374151',
-    textSecondary: '#6b7280',
+    primary: '#004d40',   // Darker, more corporate green
+    secondary: '#00796b', // A slightly brighter teal green
+    accent: '#4db6ac',    // Light teal accent
+    textPrimary: '#212121', // Almost black
+    textSecondary: '#757575', // Gray
     white: '#ffffff',
-    lightGray: '#eeeeee',
+    bgGray: '#f5f5f5',    // Light gray for content backgrounds
+    lightGray: '#e0e0e0',  // Borders
 };
 
-// --- Styles ---
+// --- Stylesheet ---
 const styles = StyleSheet.create({
-    body: { paddingTop: 35, paddingBottom: 65, paddingHorizontal: 35, fontFamily: 'Lato' },
-    h1: { fontFamily: 'Oswald', fontSize: 22, color: colors.primary, marginBottom: 10 },
-    h2: { fontFamily: 'Oswald', fontSize: 18, color: colors.primary, marginBottom: 8 },
-    h3: { fontFamily: 'Lato', fontSize: 14, fontWeight: 'bold', color: colors.primary, marginBottom: 8 },
-    paragraph: { fontSize: 11, color: colors.textPrimary, lineHeight: 1.5, textAlign: 'justify' },
+    // --- LAYOUT & TYPOGRAPHY ---
+    body: { fontFamily: 'Lato', color: colors.textPrimary },
+    h1: { fontFamily: 'Oswald', fontSize: 24, color: colors.primary, marginBottom: 15 },
+    h2: { fontFamily: 'Oswald', fontSize: 18, color: colors.primary, marginBottom: 10, paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: colors.lightGray },
+    h3: { fontFamily: 'Lato', fontSize: 12, fontWeight: 'bold', color: colors.secondary, marginBottom: 5 },
+    paragraph: { fontSize: 10, color: colors.textPrimary, lineHeight: 1.6, textAlign: 'justify' },
+    smallText: { fontSize: 8, color: colors.textSecondary },
+    pageWrapper: { paddingTop: 50, paddingBottom: 50, paddingHorizontal: 40, backgroundColor: colors.bgGray },
+    mainContent: { backgroundColor: colors.white, padding: 20, borderRadius: 5, border: `1px solid ${colors.lightGray}` },
+    row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    col: { flexGrow: 1, flexShrink: 1 },
+    col30: { width: '30%' },
+    col70: { width: '68%' },
 
-    coverPage: { backgroundColor: colors.primary, color: colors.white, justifyContent: 'center' },
-    coverContent: { padding: 50 },
-    coverTitle: { fontFamily: 'Oswald', fontSize: 48, marginBottom: 20, fontWeight: 'bold' },
-    coverSubText: { fontSize: 18, color: '#d1d5db', marginBottom: 40 },
-    coverDate: { backgroundColor: colors.accent, paddingVertical: 8, paddingHorizontal: 12, fontSize: 14, alignSelf: 'flex-start' },
-    logo: { position: 'absolute', bottom: 60, right: 95, width: 50, height: 50, borderRadius: 25 },
+    // --- COVER PAGE ---
+    coverPage: { position: 'relative' },
+    backgroundImage: { position: 'absolute', width: '100%', height: '100%', objectFit: 'cover' },
+    overlay: { position: 'absolute', width: '100%', height: '100%', backgroundColor: 'rgba(0, 77, 64, 0.7)' }, // Dark green overlay
+    coverContent: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: 40 },
+    coverHeader: { display: 'flex', flexDirection: 'row', justifyContent: 'flex-end' },
+    coverLogo: { width: 120 },
+    coverFooter: { borderTop: '1px solid rgba(255, 255, 255, 0.5)' , paddingTop: 15 },
+    coverTitle: { fontFamily: 'Oswald', fontSize: 38, color: colors.white, marginBottom: 10, lineHeight: 1.2 },
+    coverSubtitle: { fontSize: 16, color: colors.white, marginBottom: 20 },
+    coverClient: { fontFamily: 'Oswald', fontSize: 20, color: colors.white },
 
-    header: { fontSize: 10, position: 'absolute', top: 15, left: 35, right: 35, textAlign: 'right', color: colors.textSecondary, fontFamily: 'Oswald' },
-    footer: { position: 'absolute', bottom: 30, left: 0, right: 0, textAlign: 'center', color: colors.textSecondary, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 35, fontSize: 10 },
+    // --- HEADER & FOOTER ---
+    header: { fontSize: 9, position: 'absolute', top: 30, left: 40, right: 40, color: colors.textSecondary, fontFamily: 'Oswald', textTransform: 'uppercase' },
+    footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    footerLogo: { width: 60 },
 
-    tocItem: { flexDirection: 'row', marginBottom: 10 },
-    tocLink: { fontSize: 12, textDecoration: 'none', color: colors.textPrimary },
-    tocLeader: { flexGrow: 1, borderBottomWidth: 1, borderBottomColor: colors.lightGray, borderStyle: 'dotted', marginHorizontal: 5 },
-    tocPageNum: { fontSize: 12, color: colors.textPrimary },
+    // --- TABLE OF CONTENTS ---
+    tocItem: { flexDirection: 'row', marginBottom: 12, alignItems: 'flex-end' },
+    tocLink: { fontSize: 12, textDecoration: 'none', color: colors.primary, fontWeight: 'bold' },
+    tocLeader: { flexGrow: 1, borderBottomWidth: 1, borderBottomColor: colors.lightGray, borderStyle: 'dotted', marginHorizontal: 8, transform: 'translateY(-4px)' },
+    tocPageNum: { fontSize: 12, color: colors.textPrimary, fontFamily: 'Oswald' },
 
-    kpiContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 15 },
-    kpiBox: { width: '48%', backgroundColor: '#f9fafb', borderWidth: 1, borderColor: colors.lightGray, borderRadius: 5, padding: 15, marginBottom: 10 },
-    kpiValue: { fontFamily: 'Oswald', fontSize: 24, color: colors.accent },
-    kpiLabel: { fontSize: 10, color: colors.textSecondary },
+    // --- KPI GRID ---
+    kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 20 },
+    kpiItem: { width: '32%', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.lightGray, borderRadius: 5, padding: 12, marginBottom: 10, alignItems: 'center' },
+    kpiValue: { fontFamily: 'Oswald', fontSize: 20, color: colors.secondary },
+    kpiLabel: { fontSize: 9, color: colors.textSecondary, textAlign: 'center', marginTop: 5 },
 
-    chartImage: { width: '100%', height: 200, marginVertical: 15 },
+    // --- CHARTS & VISUALS ---
+    chartImage: { width: '100%', height: 'auto', marginTop: 10, marginBottom: 20 },
 
-    backCover: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-    backCoverText: { color: colors.white, fontSize: 12, fontFamily: 'Lato' },
+    // --- APPENDIX ---
+    disclaimer: { marginTop: 30, fontSize: 8, color: colors.textSecondary, fontStyle: 'italic' },
 });
 
-// --- Reusable Components ---
+// --- Reusable Page Wrapper Component ---
+const PageWrapper = ({ children, headerText }) => (
+    <Page size="A4" style={styles.body}>
+        <View style={styles.pageWrapper}>
+            <Header title={headerText} />
+            <View style={styles.mainContent}>
+                {children}
+            </View>
+            <Footer clientName={headerText} />
+        </View>
+    </Page>
+);
 const Header = ({ title }) => <Text style={styles.header} fixed>{title}</Text>;
 const Footer = ({ clientName }) => (
     <View style={styles.footer} fixed>
-        <Text>{clientName}</Text>
-        <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+        <Image src="/logo.png" style={styles.footerLogo} />
+        <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} style={styles.smallText} />
     </View>
 );
 
+// --- MAIN DOCUMENT ---
 const ReportPDFDocument = ({ report, chartImages }) => {
-    const period = `${new Date(report.startDate).toLocaleDateString('en-GB')} - ${new Date(report.endDate).toLocaleDateString('en-GB')}`;
+    const period = `${new Date(report.startDate).toLocaleDateString('en-GB')} to ${new Date(report.endDate).toLocaleDateString('en-GB')}`;
 
     return (
-        <Document author="Rec/Glo" title={`Waste Management Report for ${report.client.companyName}`}>
-
-            {/* Page 1: Cover */}
-            <Page size="A4" style={styles.coverPage}>
-                <View style={styles.coverContent}>
-                    <Text style={styles.coverSubText}>{report.client.companyName}</Text>
-                    <Text style={styles.coverTitle}>Waste Management Report</Text>
-                    <Text style={styles.coverDate}>{period}</Text>
+    <Document author="Your Company" title={`Carbon Emission Report for ${report.client.companyName}`}>
+        {/* Page 1: Cover */}
+        <Page size="A4" style={styles.coverPage}>
+            <Image src="/cover-background.png" style={styles.backgroundImage} />
+            <View style={styles.overlay} />
+            <View style={styles.coverContent}>
+                <View style={styles.coverHeader}><Image src="/logo.png" style={styles.coverLogo} /></View>
+                <View style={styles.coverFooter}>
+                    <Text style={styles.coverTitle}>CARBON EMISSION REPORT</Text>
+                    <Text style={styles.coverSubtitle}>FOR WASTE MANAGEMENT ACTIVITIES</Text>
+                    <Text style={styles.coverClient}>{report.client.companyName}</Text>
                 </View>
-                <Image src="/logo.png" style={styles.logo} />
-            </Page>
+            </View>
+        </Page>
+        
+        {/* Page 2: Table of Contents */}
+        <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`}>
+            <Text style={styles.h1}>Table of Contents</Text>
+            <View style={{ marginTop: 30 }}>
+                <View style={styles.tocItem}><Link style={styles.tocLink} src="#summary">1. Executive Summary</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>3</Text></View>
+                <View style={styles.tocItem}><Link style={styles.tocLink} src="#methodology">2. Methodology</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>4</Text></View>
+                <View style={styles.tocItem}><Link style={styles.tocLink} src="#kpis">3. Key Performance Indicators</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>5</Text></View>
+                <View style={styles.tocItem}><Link style={styles.tocLink} src="#visuals">4. Data Visualizations</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>6</Text></View>
+                <View style={styles.tocItem}><Link style={styles.tocLink} src="#insights">5. Insights & Analysis</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>7</Text></View>
+                <View style={styles.tocItem}><Link style={styles.tocLink} src="#appendix">6. Appendix & Disclaimer</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>8</Text></View>
+            </View>
+        </PageWrapper>
 
-            {/* Page 2: Table of Contents */}
-            <Page size="A4" style={styles.body}>
-                <Header title={report.reportTitle} />
-                <Text style={styles.h1}>Table of Contents</Text>
-                <View style={{ marginTop: 20 }}>
-                    <View style={styles.tocItem}><Link style={styles.tocLink} src="#about">1. About This Report</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>3</Text></View>
-                    <View style={styles.tocItem}><Link style={styles.tocLink} src="#summary">2. Executive Summary & Methodology</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>4</Text></View>
-                    <View style={styles.tocItem}><Link style={styles.tocLink} src="#kpis">3. Key Performance Indicators</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>5</Text></View>
-                    <View style={styles.tocItem}><Link style={styles.tocLink} src="#visuals">4. Data Visualizations</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>6</Text></View>
-                    <View style={styles.tocItem}><Link style={styles.tocLink} src="#insights">5. Insights & Analysis</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>7</Text></View>
-                    <View style={styles.tocItem}><Link style={styles.tocLink} src="#appendix">6. Appendix</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>8</Text></View>
+        {/* Page 3: Executive Summary */}
+        <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="summary">
+            <Text style={styles.h1}>1. Executive Summary</Text>
+            <Text style={styles.paragraph}>
+                This report quantifies the greenhouse gas (GHG) savings achieved by {report.client.companyName} for the period of {period}, as a result of its sustainable waste management services. The primary purpose is to provide transparent and actionable insights into the company's environmental impact.
+            </Text>
+            <Text style={styles.paragraph}>
+                During this period, a total of <Text style={{fontWeight: 'bold'}}>{report.totalWeightRecycled} kg</Text> of materials were successfully recycled, achieving a waste diversion rate of <Text style={{fontWeight: 'bold'}}>{report.diversionRate}%</Text>. These efforts resulted in a significant net reduction of greenhouse gas emissions, totaling <Text style={{fontWeight: 'bold'}}>{report.netImpact} kg of CO₂ equivalent (CO₂e)</Text>.
+            </Text>
+            <Text style={styles.paragraph}>
+                This positive environmental impact is equivalent to taking approximately <Text style={{fontWeight: 'bold'}}>{report.carsOffRoadEquivalent}</Text> passenger cars off the road for a year. The following pages provide a detailed breakdown of these metrics, our calculation methodologies, and further analysis.
+            </Text>
+        </PageWrapper>
+
+        {/* Page 4: Methodology */}
+        <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="methodology">
+            <Text style={styles.h1}>2. Methodology</Text>
+            <Text style={styles.h3}>GHG Assessment Framework</Text>
+            <Text style={styles.paragraph}>The GHG emission assessment in this report was conducted using internationally recognized methodologies and country-specific emission factors, adjusted for local conditions. Our framework is consistent with the GHG Protocol Corporate Value Chain (Scope 3) Standard and ISO 14064-1 guidelines.</Text>
+            <Text style={styles.h3}>Emission Calculation</Text>
+            <Text style={styles.paragraph}>Direct emissions, avoided emissions from virgin material substitution, and avoided emissions from landfilling were quantified. The net emissions balance was derived using the formula:{"\n\n"}
+            <Text style={{fontFamily: 'Courier', fontSize: 10, color: colors.primary}}>Net GHG Emissions = Direct Emissions - Avoided Virgin Material Emissions - Avoided Landfill Emissions</Text>{"\n\n"}
+            Negative values represent a net climate benefit, confirming that recycling practices reduce overall GHG emissions.
+            </Text>
+            <Text style={styles.disclaimer}>*While this report provides an overview of the methodologies and frameworks applied, we are unable to disclose the full detailed calculation models, as they constitute proprietary intellectual property and trade secrets. We welcome independent verification and are open to any organization commissioning a qualified third-party auditor to review and validate our methodology and results.</Text>
+        </PageWrapper>
+        
+        {/* Page 5: Key Performance Indicators */}
+        <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="kpis">
+            <Text style={styles.h1}>3. Key Performance Indicators</Text>
+            <View style={styles.kpiGrid}>
+                <View style={styles.kpiItem}><Text style={styles.kpiValue}>{report.totalWeightRecycled} kg</Text><Text style={styles.kpiLabel}>Total Weight Recycled</Text></View>
+                <View style={styles.kpiItem}><Text style={styles.kpiValue}>{report.diversionRate}%</Text><Text style={styles.kpiLabel}>Waste Diversion Rate</Text></View>
+                <View style={styles.kpiItem}><Text style={styles.kpiValue}>{report.netImpact} kg</Text><Text style={styles.kpiLabel}>Net CO₂e Impact</Text></View>
+                <View style={styles.kpiItem}><Text style={styles.kpiValue}>{report.carsOffRoadEquivalent}</Text><Text style={styles.kpiLabel}>Cars Off-Road (Annual Equiv.)</Text></View>
+                <View style={styles.kpiItem}><Text style={styles.kpiValue}>{report.treesSaved}</Text><Text style={styles.kpiLabel}>Trees Saved (Equivalent)</Text></View>
+                <View style={styles.kpiItem}><Text style={styles.kpiValue}>{report.landfillSpaceSaved} m³</Text><Text style={styles.kpiLabel}>Landfill Space Saved</Text></View>
+            </View>
+        </PageWrapper>
+
+        {/* Page 6: Data Visualizations */}
+        <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="visuals">
+            <Text style={styles.h1}>4. Data Visualizations</Text>
+            <View style={styles.row}>
+                <View style={styles.col70}>
+                    {chartImages.bar && <Image src={chartImages.bar} style={styles.chartImage} />}
                 </View>
-                <Footer clientName={report.client.companyName} />
-            </Page>
-
-            {/* Page 3: About This Report */}
-            <Page size="A4" style={styles.body} id="about">
-                <Header title="About This Report" />
-                <Text style={styles.h1}>1. About This Report</Text>
-
-                <Text style={[styles.paragraph, { marginTop: 20 }]}>
-                    This report has been prepared to provide a clear and holistic account of
-                    {report.client.companyName}'s waste management and recycling performance during
-                    the reporting period of {period}. It is designed as a communication tool to inform
-                    stakeholders, employees, and partners about the progress made in reducing waste,
-                    improving recycling practices, and contributing to environmental sustainability.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                    The scope of the report covers all major waste streams generated by
-                    {report.client.companyName}, including recyclables, general waste, and any
-                    materials sent to landfill. By consolidating data from operations, disposal
-                    partners, and monitoring systems, the report offers both high-level
-                    performance indicators and detailed insights into environmental impact.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                    The purpose of this document is twofold: firstly, to present verifiable
-                    performance metrics that demonstrate transparency and accountability; and
-                    secondly, to highlight the broader social and environmental value of
-                    responsible waste management. In doing so, the report goes beyond
-                    numerical data to show how sustainability practices align with global
-                    objectives, such as the United Nations Sustainable Development Goals (SDGs).
-                </Text>
-
-                <Text style={styles.paragraph}>
-                    The report is intended for multiple audiences — including management teams,
-                    employees, customers, and external stakeholders — each of whom plays a
-                    role in advancing sustainability. For management, it serves as a tool to
-                    evaluate progress and set future targets. For employees, it provides
-                    recognition of their contributions and reinforces a culture of
-                    environmental responsibility. For customers and partners, it builds trust
-                    by demonstrating a measurable commitment to sustainability.
-                </Text>
-
-                <Text style={styles.paragraph}>
-                    While this edition provides a snapshot of current performance, the structure
-                    has been designed to support ongoing monitoring and future comparison.
-                    Subsequent reports will allow for year-on-year analysis, trend evaluation,
-                    and benchmarking against industry standards. This ensures that
-                    {report.client.companyName} not only measures its impact but also builds
-                    a roadmap toward continuous improvement and long-term resilience.
-                </Text>
-
-                <Footer clientName={report.client.companyName} />
-            </Page>
-
-            {/* Page 4: Executive Summary + Methodology */}
-            <Page size="A4" style={styles.body} id="summary">
-                <Header title={report.reportTitle} />
-                <Text style={styles.h1}>2. Executive Summary & Methodology</Text>
-
-                {/* Executive Summary */}
-                <Text style={[styles.paragraph, { marginTop: 20 }]}>
-                    This waste management and recycling report presents a detailed overview of the performance
-                    of {report.client.companyName} for the reporting period of {period}. The primary aim is to
-                    provide both quantitative results and qualitative insights into the impact of current
-                    sustainability practices.
-                </Text>
-                <Text style={styles.paragraph}>
-                    During this period, {report.client.companyName} successfully diverted
-                    <Text style={{ fontWeight: "bold" }}> {report.totalWeightRecycled} kg</Text> of waste from landfills.
-                    This achievement translates into a measurable environmental benefit of
-                    <Text style={{ fontWeight: "bold" }}> {report.netImpact} kg CO₂e avoided</Text>,
-                    comparable to removing {report.carsOffRoadEquivalent} passenger cars from the road for a year.
-                    Additionally, the recycling efforts contributed to the conservation of natural resources,
-                    equivalent to saving {report.treesSaved} mature trees and preserving approximately
-                    {report.landfillSpaceSaved} m³ of landfill space.
-                </Text>
-                <Text style={styles.paragraph}>
-                    Beyond the metrics, these results reflect a strong organizational commitment to environmental
-                    responsibility, aligning with global climate targets and sustainable development goals.
-                    The report underscores how effective waste management not only reduces costs and regulatory risks
-                    but also enhances corporate reputation and stakeholder trust.
-                </Text>
-
-                {/* Methodology */}
-                <Text style={[styles.h2, { marginTop: 25 }]}>Methodology</Text>
-                <Text style={styles.paragraph}>
-                    To ensure accuracy and transparency, this report was developed through a structured methodology
-                    that combined data collection, processing, and analysis. Waste stream data was obtained from
-                    operational records, disposal partners, and on-site monitoring. All figures were standardized
-                    to kilograms for comparability, and cross-checked with verified third-party conversion factors.
-                </Text>
-                <Text style={styles.paragraph}>
-                    Recycling and diversion rates were calculated by comparing the weight of materials sent for
-                    recycling against the total waste generated. Environmental impact indicators, such as CO₂e
-                    reduction, were derived using internationally recognized emission factors. To enhance readability,
-                    the results are presented both in numerical form (Key Performance Indicators) and visually
-                    (charts and graphs).
-                </Text>
-                <Text style={styles.paragraph}>
-                    Qualitative insights were gathered from responses to sustainability questionnaires completed
-                    by {report.client.companyName}. These responses were integrated into the “Insights & Analysis”
-                    section to provide context for the quantitative results, highlight ongoing challenges, and
-                    identify opportunities for improvement.
-                </Text>
-                <Text style={styles.paragraph}>
-                    Together, this methodology ensures that the report is not only a snapshot of past performance
-                    but also a strategic tool to guide future sustainability planning and continuous improvement.
-                </Text>
-
-                <Footer clientName={report.client.companyName} />
-            </Page>
-
-            {/* Page 5: KPIs */}
-            <Page size="A4" style={styles.body}>
-                <Header title={report.reportTitle} />
-                <Text style={styles.h1} id="kpis">3. Key Performance Indicators</Text>
-                <View style={styles.kpiContainer}>
-                    <View style={styles.kpiBox}><Text style={styles.kpiValue}>{report.totalWeightRecycled} kg</Text><Text style={styles.kpiLabel}>Total Weight Recycled</Text></View>
-                    <View style={styles.kpiBox}><Text style={styles.kpiValue}>{report.diversionRate}%</Text><Text style={styles.kpiLabel}>Waste Diversion Rate</Text></View>
-                    <View style={styles.kpiBox}><Text style={styles.kpiValue}>{report.netImpact} kg</Text><Text style={styles.kpiLabel}>Net CO2e Impact</Text></View>
-                    <View style={styles.kpiBox}><Text style={styles.kpiValue}>{report.carsOffRoadEquivalent}</Text><Text style={styles.kpiLabel}>Cars Off-Road Equivalent (Annual)</Text></View>
-                    <View style={styles.kpiBox}><Text style={styles.kpiValue}>{report.treesSaved}</Text><Text style={styles.kpiLabel}>Trees Saved (Equivalent)</Text></View>
-                    <View style={styles.kpiBox}><Text style={styles.kpiValue}>{report.landfillSpaceSaved} m³</Text><Text style={styles.kpiLabel}>Landfill Space Saved (Approx.)</Text></View>
+                <View style={styles.col30}>
+                    <Text style={styles.h3}>Emissions Overview</Text>
+                    <Text style={styles.paragraph}>This chart illustrates the total emissions breakdown. 'Avoided' represents the significant GHG savings, while 'Logistics' and 'Recycling' represent the emissions generated during the process.</Text>
                 </View>
-                <Footer clientName={report.client.companyName} />
-            </Page>
+            </View>
+            <View style={styles.row}>
+                <View style={styles.col30}>
+                    <Text style={styles.h3}>Process Emissions</Text>
+                    <Text style={styles.paragraph}>This chart shows the proportion of direct emissions generated from logistics (transport) versus the recycling process itself.</Text>
+                </View>
+                <View style={styles.col70}>
+                    {chartImages.pie && <Image src={chartImages.pie} style={styles.chartImage} />}
+                </View>
+            </View>
+        </PageWrapper>
 
-            {/* Page 6: Data Visualizations */}
-            <Page size="A4" style={styles.body} id="visuals">
-                <Header title={report.reportTitle} />
-                <Text style={styles.h1}>4. Data Visualizations</Text>
-                {chartImages.bar && (<View><Text style={styles.h3}>Emissions Overview</Text><Image src={chartImages.bar} style={styles.chartImage} /></View>)}
-                {chartImages.pie && (<View><Text style={styles.h3}>Emissions Breakdown</Text><Image src={chartImages.pie} style={styles.chartImage} /></View>)}
-                <Footer clientName={report.client.companyName} />
-            </Page>
+        {/* Page 7: Insights & Analysis */}
+        <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="insights">
+            <Text style={styles.h1}>5. Insights & Analysis</Text>
+            {report.questions.map((q) => (
+                <View key={q.id} style={{ marginBottom: 20 }} wrap={false}>
+                    <Text style={styles.h2}>{q.questionText}</Text>
+                    <Text style={styles.paragraph}>{q.answerText || "No answer provided for this question."}</Text>
+                </View>
+            ))}
+        </PageWrapper>
 
-            {/* Page 7: Insights */}
-            <Page size="A4" style={styles.body} id="insights">
-                <Header title={report.reportTitle} />
-                <Text style={styles.h1}>5. Insights & Analysis</Text>
-                {report.questions.map((q) => (
-                    <View key={q.id} style={{ marginBottom: 20 }}>
-                        <Text style={styles.h3}>{q.text}</Text>
-                        <Text style={styles.paragraph}>{q.answerText || "No answer provided."}</Text>
-                    </View>
-                ))}
-                <Footer clientName={report.client.companyName} />
-            </Page>
-
-            {/* Page 8: Appendix */}
-            <Page size="A4" style={styles.body} id="appendix">
-                <Header title="Appendix" />
-                <Text style={styles.h1}>6. Appendix</Text>
-                <Text style={[styles.paragraph, { marginTop: 20 }]}>
-                    Glossary of Terms:
-                </Text>
-                <Text style={styles.paragraph}>
-                    • Diversion Rate: % of waste diverted from landfill.{"\n"}
-                    • Net Impact: Net carbon emissions impact after accounting for logistics + recycling.
-                </Text>
-                <Text style={styles.paragraph}>
-                    Additional Notes: This appendix provides definitions and reference details for interpreting the results.
-                </Text>
-                <Footer clientName={report.client.companyName} />
-            </Page>
-
-            {/* Final Page: Back Cover */}
-            <Page size="A4" style={styles.backCover}>
-                <Image src="/logo.png" style={{ width: 80, height: 80, borderRadius: 40, marginBottom: 20 }} />
-                <Text style={styles.backCoverText}>Thank you for your commitment to sustainability.</Text>
-            </Page>
-        </Document>
-    );
-};
+         {/* Page 8: Appendix */}
+        <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="appendix">
+            <Text style={styles.h1}>6. Appendix & Disclaimer</Text>
+            <Text style={styles.h2}>Glossary of Terms</Text>
+            <Text style={styles.paragraph}><Text style={{fontWeight: 'bold'}}>CO₂e (Carbon Dioxide Equivalent):</Text> A standard unit for measuring carbon footprints. It converts the impact of different greenhouse gases into the equivalent amount of carbon dioxide.</Text>
+            <Text style={styles.paragraph}><Text style={{fontWeight: 'bold'}}>Waste Diversion Rate:</Text> The percentage of total waste generated by an organization that is diverted from landfill disposal through recycling, composting, or reuse.</Text>
+            <Text style={styles.paragraph}><Text style={{fontWeight: 'bold'}}>Net GHG Emissions:</Text> The final balance of emissions after subtracting the total avoided emissions from the total direct emissions generated by waste management activities.</Text>
+            
+            <Text style={styles.disclaimer}>The calculations and equivalencies presented in this report are based on a combination of submitted data and established, publicly available conversion factors from sources including the U.S. Environmental Protection Agency (EPA). These figures are provided for estimation and communication purposes. This report is not an official GHG inventory and has not been verified by a third-party auditor. For official carbon accounting or compliance purposes, a formal third-party verification is recommended.</Text>
+        </PageWrapper>
+    </Document>
+)};
 
 export default ReportPDFDocument;

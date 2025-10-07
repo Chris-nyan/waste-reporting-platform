@@ -5,11 +5,14 @@ const {
     createWasteEntry, 
     getWasteEntriesForClient,
     updateWasteEntry,
-    deleteWasteEntry
+    deleteWasteEntry,
+    getTemplate,
+    bulkCreateWasteEntries,
 } = require('../controllers/wasteDataController');
 const { protect } = require('../middleware/authMiddleware');
 
 const upload = multer({ dest: 'uploads/' });
+const singleUpload = multer({ dest: 'uploads/' }).single('file');
 
 // Route for creating a new entry (POST)
 router.post('/', protect, upload.fields([
@@ -23,6 +26,11 @@ router.get('/client/:clientId', protect, getWasteEntriesForClient);
 router.route('/:id')
     .put(protect, updateWasteEntry)
     .delete(protect, deleteWasteEntry);
+
+// route for generating CSV template
+router.get('/template', protect, getTemplate);
+// route for handling bulk CSV upload
+router.post('/bulk-upload', protect, singleUpload, bulkCreateWasteEntries);
 
 module.exports = router;
 

@@ -32,17 +32,150 @@ const Step1WasteDetails = ({ control, form, masterData }) => {
 
   return (
     <div className="space-y-4">
-      <FormField control={control} name="pickupDate" render={({ field }) => (
-        <FormItem className="flex flex-col"><FormLabelWithInfo description="The date waste was collected.">Pickup Date</FormLabelWithInfo><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} /></PopoverContent></Popover><FormMessage /></FormItem>
-      )} />
-      <div className="grid grid-cols-2 gap-4">
-        <FormField control={control} name="wasteCategoryId" render={({ field }) => (<FormItem><FormLabelWithInfo description="The broad category.">Waste Category</FormLabelWithInfo><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl><SelectContent>{masterData?.wasteCategories?.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-        <FormField control={control} name="wasteTypeId" render={({ field }) => (<FormItem><FormLabelWithInfo description="The specific material type.">Waste Type</FormLabelWithInfo><Select onValueChange={field.onChange} value={field.value} disabled={!selectedCategoryId}><FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent>{wasteTypes.map(type => <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <FormField control={control} name="quantity" render={({ field }) => (<FormItem><FormLabelWithInfo description="The measured amount.">Quantity</FormLabelWithInfo><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={control} name="unit" render={({ field }) => (<FormItem><FormLabelWithInfo description="The unit of measurement.">Unit</FormLabelWithInfo><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger></FormControl><SelectContent><SelectItem value="KG">KG</SelectItem><SelectItem value="G">G</SelectItem><SelectItem value="T">T</SelectItem><SelectItem value="LB">LB</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-      </div>
+      {/* Pickup Date */}
+      <FormField
+        control={control}
+        name="pickupDate"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabelWithInfo description="The date waste was collected.">
+              Waste Pickup Date
+            </FormLabelWithInfo>
+            <Popover>
+              <PopoverTrigger asChild>
+                <FormControl>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full pl-3 text-left font-normal",
+                      !field.value && "text-muted-foreground"
+                    )}
+                  >
+                    {field.value ? (
+                      format(field.value, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </FormControl>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={field.value}
+                  onSelect={field.onChange}
+                />
+              </PopoverContent>
+            </Popover>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Waste Category */}
+      <FormField
+        control={control}
+        name="wasteCategoryId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabelWithInfo description="The broad category.">
+              Waste Category
+            </FormLabelWithInfo>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {masterData?.wasteCategories?.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Waste Type */}
+      <FormField
+        control={control}
+        name="wasteTypeId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabelWithInfo description="The specific material type.">
+              Waste Type
+            </FormLabelWithInfo>
+            <Select
+              onValueChange={field.onChange}
+              value={field.value}
+              disabled={!selectedCategoryId}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {wasteTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Quantity */}
+      <FormField
+        control={control}
+        name="quantity"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabelWithInfo description="The measured amount of weight">
+              Weight
+            </FormLabelWithInfo>
+            <FormControl>
+              <Input type="number" placeholder="0.00" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Unit */}
+      <FormField
+        control={control}
+        name="unit"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabelWithInfo description="The unit of measurement.">
+              Unit
+            </FormLabelWithInfo>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="KG">KG</SelectItem>
+                <SelectItem value="G">G</SelectItem>
+                <SelectItem value="T">T</SelectItem>
+                <SelectItem value="LB">LB</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 };
@@ -287,7 +420,7 @@ const Step0UploadChoice = ({ setStep, clientId, onUploadSuccess }) => {
           <CardContent className="space-y-5 pt-2">
             {/* Step 1 */}
             <div className="flex items-center gap-3">
-              
+
               <Button
                 onClick={handleDownloadTemplate}
                 disabled={isDownloading}
@@ -305,7 +438,7 @@ const Step0UploadChoice = ({ setStep, clientId, onUploadSuccess }) => {
 
             {/* Step 2 */}
             <div className="flex items-start gap-3">
-              
+
               <div className="w-full">
                 <Dropzone
                   onFileChange={setSelectedFile}
@@ -317,7 +450,7 @@ const Step0UploadChoice = ({ setStep, clientId, onUploadSuccess }) => {
 
             {/* Step 3 */}
             <div className="flex items-center gap-3">
-              
+
               <Button
                 onClick={handleUpload}
                 disabled={isUploading || !selectedFile}

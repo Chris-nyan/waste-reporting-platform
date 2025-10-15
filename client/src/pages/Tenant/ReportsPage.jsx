@@ -1,23 +1,34 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link } from 'react-router-dom';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Link, useNavigate } from 'react-router-dom';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
-import { Loader2, PlusCircle, Download } from 'lucide-react';
+import { Loader2, PlusCircle, Download, Eye } from 'lucide-react';
 import api from '@/lib/api';
 import { format } from 'date-fns';
+import { pdf } from '@react-pdf/renderer';
+import { saveAs } from 'file-saver';
+import ReportPDFDocument from '@/components/reports/ReportPDFDocument';
+import { toast } from 'react-toastify';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import html2canvas from 'html2canvas';
+
+// Helper to generate distinct colors for the pie charts
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
 const ReportsPage = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloadingId, setDownloadingId] = useState(null);
+  const navigate = useNavigate();
+
+  // State and refs for background chart generation
+  const [reportForChartGen, setReportForChartGen] = useState(null);
+  const barChartRef = useRef(null);
+  const emissionsPieChartRef = useRef(null);
+  const compositionPieChartRef = useRef(null);
+  const monthlyTrendChartRef = useRef(null);
 
   const fetchReports = useCallback(async () => {
     try {
@@ -26,7 +37,6 @@ const ReportsPage = () => {
       setReports(response.data);
     } catch (err) {
       setError('Failed to fetch reports. Please try again.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -36,8 +46,169 @@ const ReportsPage = () => {
     fetchReports();
   }, [fetchReports]);
 
+  // Effect to generate and download the PDF once chart data is ready
+  useEffect(() => {
+    if (
+      reportForChartGen &&
+      barChartRef.current &&
+      emissionsPieChartRef.current &&
+      compositionPieChartRef.current &&
+      monthlyTrendChartRef.current
+    ) {
+      const captureCharts = async () => {
+        try {
+          // Wait for Recharts to fully render in hidden container
+          await new Promise((r) => setTimeout(r, 1500));
+
+          const capture = async (ref, name) => {
+            try {
+              await new Promise((r) => setTimeout(r, 300)); // small buffer between charts
+              const canvas = await html2canvas(ref, {
+                scale: 2, // improves quality
+                useCORS: true, // allows cross-origin images if any
+                logging: false,
+              });
+              console.log(`${name} captured`);
+              return canvas.toDataURL("image/png");
+            } catch (err) {
+              console.error(`Failed to capture ${name}:`, err);
+              return null;
+            }
+          };
+
+          const [bar, emissionsPie, compositionPie, monthlyTrend] = await Promise.all([
+            capture(barChartRef.current, "Emission Balance Bar Chart"),
+            capture(emissionsPieChartRef.current, "Emissions Pie Chart"),
+            capture(compositionPieChartRef.current, "Composition Pie Chart"),
+            capture(monthlyTrendChartRef.current, "Monthly Trend Chart"),
+          ]);
+
+          const chartImages = { bar, emissionsPie, compositionPie, monthlyTrend };
+
+          // Create PDF
+          const blob = await pdf(
+            <ReportPDFDocument report={reportForChartGen} chartImages={chartImages} />
+          ).toBlob();
+
+          // Download PDF
+          saveAs(
+            blob,
+            `Report-${reportForChartGen.client.companyName}-${new Date(
+              reportForChartGen.generatedAt
+            )
+              .toISOString()
+              .split("T")[0]}.pdf`
+          );
+        } catch (err) {
+          toast.error("Failed to generate PDF.");
+          console.error("Download error:", err);
+        } finally {
+          setDownloadingId(null);
+          setReportForChartGen(null);
+        }
+      };
+
+      captureCharts();
+    }
+  }, [reportForChartGen]);
+
+  // Fetches full report data and sets it to trigger the useEffect above
+  const handleDownload = async (reportId) => {
+    setDownloadingId(reportId);
+    try {
+      const fullReportResponse = await api.get(`/reports/${reportId}`);
+      setReportForChartGen(fullReportResponse.data);
+    } catch (err) {
+      toast.error("Failed to fetch report data for download.");
+      setDownloadingId(null);
+    }
+  };
+
+  // --- Data processing functions for charts ---
+  const getCompositionData = () => {
+    if (!reportForChartGen || !reportForChartGen.wasteData) return [];
+    const composition = reportForChartGen.wasteData.reduce((acc, entry) => {
+      const name = entry.wasteType.name;
+      acc[name] = (acc[name] || 0) + entry.quantity;
+      return acc;
+    }, {});
+    return Object.entries(composition).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }));
+  };
+
+  const getMonthlyTrendData = () => {
+    if (!reportForChartGen || !reportForChartGen.wasteData) return [];
+    const monthlyData = reportForChartGen.wasteData.reduce((acc, entry) => {
+      const month = format(new Date(entry.recycledDate), 'MMM yyyy');
+      acc[month] = (acc[month] || 0) + entry.quantity;
+      return acc;
+    }, {});
+    return Object.entries(monthlyData)
+      .map(([month, quantity]) => ({ month, quantity: parseFloat(quantity.toFixed(2)) }))
+      .sort((a, b) => new Date(`01 ${a.month}`) - new Date(`01 ${b.month}`));
+  };
+
+
   return (
     <div className="flex-1 space-y-6 p-4 lg:p-8">
+      {/* --- Hidden Container for Background Chart Generation --- */}
+      {reportForChartGen && (
+        <div
+          style={{
+            position: "absolute",
+            opacity: 0,
+            pointerEvents: "none",
+            zIndex: -9999,
+            width: "1000px",
+            height: "auto",
+          }}
+        >
+          {/* 1. Bar Chart */}
+          <div ref={barChartRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
+            <ResponsiveContainer>
+              <BarChart data={[{ name: 'Emissions (kg CO2e)', Avoided: reportForChartGen.emissionsAvoided, Logistics: reportForChartGen.logisticsEmissions, Recycling: reportForChartGen.recyclingEmissions }]}>
+                <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Legend /><Bar dataKey="Avoided" fill="#4ade80" /><Bar dataKey="Logistics" fill="#f87171" /><Bar dataKey="Recycling" fill="#fb923c" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {/* 2. Emissions Pie Chart */}
+          <div ref={emissionsPieChartRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={[{ name: 'Logistics Emissions', value: reportForChartGen.logisticsEmissions }, { name: 'Recycling Emissions', value: reportForChartGen.recyclingEmissions }]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} label>
+                  <Cell key="cell-0" fill="#f87171" /><Cell key="cell-1" fill="#fb923c" />
+                </Pie><Tooltip formatter={(value) => `${value.toFixed(2)} kg`} /><Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          {/* 3. Waste Composition Pie Chart */}
+          <div ref={compositionPieChartRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={getCompositionData()} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} labelLine={false} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  {getCompositionData().map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(value) => `${value.toFixed(2)} kg`} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          {/* 4. Monthly Trend Line Chart */}
+          <div ref={monthlyTrendChartRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
+            <ResponsiveContainer>
+              <LineChart data={getMonthlyTrendData()} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis label={{ value: 'Quantity (kg)', angle: -90, position: 'insideLeft' }} />
+                <Tooltip formatter={(value) => `${value.toFixed(2)} kg`} />
+                <Legend />
+                <Line type="monotone" dataKey="quantity" stroke="#00796b" strokeWidth={2} activeDot={{ r: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* --- Visible Page Content --- */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-gray-800">Reports</h2>
@@ -53,49 +224,43 @@ const ReportsPage = () => {
       <Card className="shadow-sm">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center items-center h-96">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-            </div>
+            <div className="flex justify-center items-center h-96"><Loader2 className="h-8 w-8 animate-spin text-emerald-600" /></div>
           ) : error ? (
             <div className="p-8 text-center text-red-500">{error}</div>
           ) : (
             <div className="overflow-x-auto">
-                <Table>
+              <Table>
                 <TableHeader>
-                    <TableRow className="border-gray-200">
+                  <TableRow className="border-gray-200 bg-gray-50">
                     <TableHead>Report Title</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Period</TableHead>
                     <TableHead>Generated On</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
+                  </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {reports.length > 0 ? (
+                  {reports.length > 0 ? (
                     reports.map((report) => (
-                        <TableRow key={report.id} className="border-gray-100 hover:bg-gray-50">
+                      <TableRow key={report.id} className="border-gray-100 hover:bg-gray-50">
                         <TableCell className="font-medium text-gray-800">{report.reportTitle}</TableCell>
                         <TableCell className="text-gray-600">{report.client.companyName}</TableCell>
-                        <TableCell className="text-gray-600">
-                          {format(new Date(report.startDate), 'MMM d, yyyy')} - {format(new Date(report.endDate), 'MMM d, yyyy')}
-                        </TableCell>
+                        <TableCell className="text-gray-600">{format(new Date(report.startDate), 'MMM d, yyyy')} - {format(new Date(report.endDate), 'MMM d, yyyy')}</TableCell>
                         <TableCell className="text-gray-600">{format(new Date(report.generatedAt), 'PPP')}</TableCell>
-                        <TableCell className="text-right">
-                            <Button variant="outline" size="sm">
-                                <Download className="mr-2 h-4 w-4" /> Download
-                            </Button>
+                        <TableCell className="text-right space-x-2">
+                          <Button variant="ghost" size="sm" onClick={() => navigate(`/app/reports/preview/${report.id}`)}><Eye className="mr-2 h-4 w-4" /> Preview</Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDownload(report.id)} disabled={downloadingId === report.id}>
+                            {downloadingId === report.id ? (<Loader2 className="mr-2 h-4 w-4 animate-spin" />) : (<Download className="mr-2 h-4 w-4" />)}
+                            Download
+                          </Button>
                         </TableCell>
-                        </TableRow>
+                      </TableRow>
                     ))
-                    ) : (
-                    <TableRow>
-                        <TableCell colSpan="5" className="h-48 text-center text-gray-500">
-                        No reports have been generated yet.
-                        </TableCell>
-                    </TableRow>
-                    )}
+                  ) : (
+                    <TableRow><TableCell colSpan="5" className="h-48 text-center text-gray-500">No reports have been generated yet.</TableCell></TableRow>
+                  )}
                 </TableBody>
-                </Table>
+              </Table>
             </div>
           )}
         </CardContent>

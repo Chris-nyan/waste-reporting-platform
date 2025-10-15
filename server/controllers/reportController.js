@@ -40,9 +40,9 @@ const formatNumber = (num) => parseFloat(num.toFixed(2));
  * @access  Private
  */
 const generateReport = async (req, res) => {
-    // --- ADD THIS LOG ---
+    // --- LOG FOR DATA REPORT CHECKING---
     console.log("--- RECEIVED REQUEST BODY ON BACKEND ---");
-    console.log(JSON.stringify(req.body, null, 2));
+    // console.log(JSON.stringify(req.body, null, 2));
     // --------------------
     const {
         clientId,
@@ -58,7 +58,7 @@ const generateReport = async (req, res) => {
     }
 
     try {
-        // --- All the calculations from Phase 1 remain the same ---
+        // --- All the calculations---
         const wasteEntries = await prisma.wasteData.findMany({ /* ... */ });
         const totalWeightRecycled = wasteEntries.reduce((sum, entry) => sum + entry.quantity, 0);
         const formatNumber = (num) => parseFloat(num.toFixed(2));
@@ -171,7 +171,7 @@ const getWasteTypesForPeriod = async (req, res) => {
     }
 };
 /**
- * @desc    Get a single generated report by its ID
+ * @desc    Get a single generated report by its ID, including its underlying waste data
  * @route   GET /api/reports/:id
  * @access  Private
  */
@@ -181,20 +181,38 @@ const getReportById = async (req, res) => {
         const report = await prisma.report.findFirst({
             where: {
                 id,
-                client: { tenantId: req.user.tenantId }, // Security check
+                client: { tenantId: req.user.tenantId },
             },
             include: {
                 client: true,
                 questions: true,
-
             },
         });
 
         if (!report) {
             return res.status(404).json({ message: 'Report not found.' });
         }
+        const wasteData = await prisma.wasteData.findMany({
+            where: {
+                clientId: report.clientId,
+                recycledDate: {
+                    gte: report.startDate,
+                    lte: report.endDate,
+                },
+                wasteTypeId: {
+                    in: report.includedWasteTypes,
+                }
+            },
+            include: {
+                wasteType: true // Include the name of the waste type for the chart
+            }
+        });
+        const fullReportPayload = {
+            ...report,
+            wasteData: wasteData,
+        };
+        res.json(fullReportPayload);
 
-        res.json(report);
     } catch (error) {
         console.error("Error fetching report by ID:", error);
         res.status(500).json({ message: 'Internal server error' });

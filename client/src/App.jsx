@@ -10,8 +10,12 @@ import LoginPage from './pages/LoginPage';
 import TenantDashboardPage from './pages/Tenant/TenantDashboardPage';
 import ClientsPage from './pages/Tenant/ClientPage';
 import ClientDetailPage from './pages/Tenant/ClientDetailsPage';
+import ReportsPage from './pages/Tenant/ReportsPage';
+import GenerateReportPage from './pages/Tenant/GenerateReportPage';
+import ReportPreviewPage from './pages/Tenant/ReportPreviewPage';
 import SuperAdminDashboardPage from './pages/SuperAdmin/SuperAdminDashboardPage';
 import AppLayout from './components/layout/AppLayout';
+
 
 // --- Protected Route Wrapper ---
 const ProtectedRoute = () => {
@@ -65,6 +69,11 @@ function App() {
             <Route path="/app/dashboard" element={<TenantDashboardPage />} />
             <Route path="/app/clients" element={<ClientsPage />} />
             <Route path="/app/clients/:clientId" element={<ClientDetailPage />} />
+            <Route path="/app/reports" element={<ReportsPage />} />
+            <Route path="/app/reports/generate" element={<GenerateReportPage />} />
+            <Route path="/app/reports/preview/:id" element={<ReportPreviewPage />} />
+
+
 
             {/* Super Admin Routes */}
             <Route path="/superadmin/dashboard" element={<SuperAdminDashboardPage />} />

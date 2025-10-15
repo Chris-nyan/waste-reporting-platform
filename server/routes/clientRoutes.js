@@ -1,16 +1,24 @@
 const express = require('express');
 const router = express.Router();
-// Ensure getClientById is imported from the controller
-const { getClients, createClient, getClientById } = require('../controllers/clientController');
+const { 
+    getClients, 
+    createClient, 
+    getClientById,
+    updateClient,
+    deleteClient
+} = require('../controllers/clientController');
 const { protect } = require('../middleware/authMiddleware');
 
+// Routes for the entire client collection
 router.route('/')
   .get(protect, getClients)
   .post(protect, createClient);
 
-// It handles requests for a specific client, e.g., /api/clients/some-id
+// Routes for a specific client by its ID
 router.route('/:id')
-    .get(protect, getClientById);
+    .get(protect, getClientById)
+    .put(protect, updateClient)
+    .delete(protect, deleteClient);
 
 module.exports = router;
 

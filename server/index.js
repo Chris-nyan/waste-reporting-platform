@@ -10,6 +10,7 @@ const wasteRoutes = require('./routes/wasteRoutes.js');
 const logisticRoutes = require('./routes/logisticRoutes.js');
 const masterRoutes = require('./routes/masterRoutes.js');
 const reportRoutes = require('./routes/reportRoutes.js');
+const settingsRoutes = require('./routes/settingsRoutes.js');
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +35,8 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/waste-data', wasteRoutes);
 app.use('/api/logistics', logisticRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/settings', settingsRoutes);
+
 
 
 

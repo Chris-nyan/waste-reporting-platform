@@ -24,6 +24,10 @@ model Tenant {
   clients               Client[]
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+
+  facilities      Facility[]
+  pickupLocations PickupLocation[]
+  vehicleTypes    VehicleType[]
 }
 
 // =======================================
@@ -96,39 +100,80 @@ model RecyclingTechnology {
 
 
 // =======================================
-// UPDATED WasteData MODEL
+// WasteData MODEL
 // =======================================
 model WasteData {
-  id                  String    @id @default(cuid())
-  wasteType           WasteType @relation(fields: [wasteTypeId], references: [id])
-  wasteTypeId         String
-
-  quantity            Float
-  unit                String    
-  recycledDate        DateTime
+  id            String    @id @default(cuid())
+  wasteType     WasteType @relation(fields: [wasteTypeId], references: [id])
+  wasteTypeId   String
+  quantity      Float
+  unit          String
+  recycledDate  DateTime
   
-  recyclingTechnology RecyclingTechnology? @relation(fields: [recyclingTechnologyId], references: [id])
+  recyclingTechnology   RecyclingTechnology? @relation(fields: [recyclingTechnologyId], references: [id])
   recyclingTechnologyId String?
   
-  // --- Logistics ---
-  pickupAddress       String?
-  facilityAddress     String?
-  distanceKm          Float?
-  vehicleType         String?
-  pickupDate          DateTime?
-  imageUrl           String[]  @default([])
-
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId            String
-  createdBy           User      @relation(fields: [createdById], references: [id])
-  createdById         String
+  // --- LOGISTICS (UPDATED) ---
+  // The old string fields will be replaced by relations
+  // pickupAddress    String? // REMOVED
+  // facilityAddress  String? // REMOVED
+  // vehicleType      String? // REMOVED
+  
+  pickupLocation   PickupLocation? @relation(fields: [pickupLocationId], references: [id])
+  pickupLocationId String?
+  facility         Facility?       @relation(fields: [facilityId], references: [id])
+  facilityId       String?
+  vehicleType      VehicleType?    @relation(fields: [vehicleTypeId], references: [id])
+  vehicleTypeId    String?
+  
+  distanceKm    Float?
+  pickupDate    DateTime?
+  imageUrl      String[]  @default([])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId      String
+  createdBy     User      @relation(fields: [createdById], references: [id])
+  createdById   String
   @@index([clientId])
 }
 
+model Facility {
+  id          String      @id @default(cuid())
+  name        String      // e.g., "Main Recycling Plant"
+  fullAddress String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId    String
+  wasteData   WasteData[]
+
+  @@index([tenantId])
+}
+
+model PickupLocation {
+  id          String      @id @default(cuid())
+  name        String      // e.g., "Client HQ Warehouse"
+  fullAddress String
+  // This links to the Tenant, not a specific Client, for broader reusability
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId    String
+  wasteData   WasteData[]
+
+  @@index([tenantId])
+}
+
+model VehicleType {
+  id        String      @id @default(cuid())
+  name      String      // e.g., "10-Ton Scania Truck"
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId  String
+  wasteData WasteData[]
+
+  @@index([tenantId])
+}
+
+
 // =======================================
-// NEW: REPORTING MODELS
+// REPORTING MODELS
 // =======================================
 
 model Report {
@@ -183,7 +228,7 @@ model ReportQuestion {
 
 
 // =======================================
-// NEW MASTER DATA MODEL FOR QUESTIONS
+// MASTER DATA MODEL FOR QUESTIONS
 // =======================================
 
 model MasterReportQuestion {

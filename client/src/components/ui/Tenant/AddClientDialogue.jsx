@@ -23,8 +23,8 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { PlusCircle, Loader2 } from 'lucide-react';
-import { clientSchema } from '../../schemas/clientSchemas';
-import api from '../../lib/api';
+import { clientSchema } from '../../../schemas/clientSchemas';
+import api from '../../../lib/api';
 
 const AddClientDialog = ({ onClientAdded }) => {
     const [isOpen, setIsOpen] = React.useState(false);
@@ -66,11 +66,7 @@ const AddClientDialog = ({ onClientAdded }) => {
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 <Button
-                    className="bg-white backdrop-blur-md text-green-900 rounded-lg 
-             shadow-md px-4 py-4 border border-transparent
-             hover:border-green-600 hover:text-green-600 
-             hover:shadow-lg hover:bg-white
-             transition-all duration-200"
+                    className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200"
                 >
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add New Client
@@ -141,7 +137,8 @@ const AddClientDialog = ({ onClientAdded }) => {
                             <DialogClose asChild>
                                 <Button type="button" variant="outline">Cancel</Button>
                             </DialogClose>
-                            <Button type="submit" disabled={form.formState.isSubmitting}>
+                            <Button className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200"
+                                type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Save Client
                             </Button>

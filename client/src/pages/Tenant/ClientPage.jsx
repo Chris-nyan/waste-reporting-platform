@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Trash2, Edit, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   Table,
@@ -20,14 +21,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2, MoreHorizontal } from 'lucide-react';
 import api from '@/lib/api';
-import AddClientDialog from '@/components/ui/AddClientDialogue';
+import AddClientDialog from '@/components/ui/Tenant/AddClientDialogue';
+import EditClientDialog from '@/components/ui/Tenant/EditClientDialogue';
+import ConfirmationDialog from '@/components/ui/ConfirmDialogue';
+import { toast } from 'react-toastify';
 
 const ClientsPage = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Use useCallback to memoize the fetch function
+  // State for managing modals
+  const [clientToEdit, setClientToEdit] = useState(null);
+  const [clientToDelete, setClientToDelete] = useState(null);
+
   const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
@@ -35,16 +42,28 @@ const ClientsPage = () => {
       setClients(response.data);
     } catch (err) {
       setError('Failed to fetch clients. Please try again.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Fetch clients on initial component mount
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+
+  const handleDeleteClient = async () => {
+    if (!clientToDelete) return;
+    try {
+        await api.delete(`/clients/${clientToDelete.id}`);
+        toast.success(`Client "${clientToDelete.companyName}" deleted successfully.`);
+        setClientToDelete(null); // Close confirmation dialog
+        fetchClients(); // Refresh data
+    } catch (err) {
+        toast.error('Failed to delete client.');
+        setClientToDelete(null);
+    }
+  };
+
 
   return (
     <div className="flex-1 space-y-6 p-4 lg:p-8">
@@ -53,11 +72,10 @@ const ClientsPage = () => {
           <h2 className="text-3xl font-bold tracking-tight text-gray-800 [text-shadow:1px_1px_1px_rgba(0,0,0,0.05)]">Clients</h2>
           <p className="text-gray-500">Manage your client profiles and their waste data.</p>
         </div>
-        {/* The AddClientDialog contains the themed button */}
         <AddClientDialog onClientAdded={fetchClients} />
       </div>
 
-      <Card className="bg-white shadow-sm rounded-xl">
+      <Card className="bg-white/70 backdrop-blur-lg border border-gray-200/50 shadow-sm rounded-xl">
         <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center items-center h-96">
@@ -69,7 +87,7 @@ const ClientsPage = () => {
             <div className="overflow-x-auto">
                 <Table>
                 <TableHeader>
-                    <TableRow className="border-gray-200">
+                    <TableRow className="border-gray-200/60">
                     <TableHead>Company Name</TableHead>
                     <TableHead>Contact Person</TableHead>
                     <TableHead>Email</TableHead>
@@ -95,11 +113,17 @@ const ClientsPage = () => {
                             <DropdownMenuContent align="end" className="bg-white/90 backdrop-blur-sm border-gray-200/50 shadow-lg">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
-                                  <Link to={`/app/clients/${client.id}`} className="cursor-pointer">View Details</Link>
+                                  <Link to={`/app/clients/${client.id}`} className="cursor-pointer">
+                                    <Eye className="mr-2 h-4 w-4" /> Waste Data
+                                  </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer">Edit Client</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setClientToEdit(client)} className="cursor-pointer">
+                                    <Edit className="mr-2 h-4 w-4" /> Edit Client
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-red-600 focus:text-white focus:bg-red-500 cursor-pointer">Delete Client</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setClientToDelete(client)} className="text-red-600 focus:text-white focus:bg-red-500 cursor-pointer">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Client
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                             </DropdownMenu>
                         </TableCell>
@@ -118,6 +142,24 @@ const ClientsPage = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Render the modals */}
+      <EditClientDialog 
+        client={clientToEdit}
+        isOpen={!!clientToEdit}
+        onOpenChange={(isOpen) => !isOpen && setClientToEdit(null)}
+        onClientUpdated={() => {
+            setClientToEdit(null);
+            fetchClients();
+        }}
+      />
+      <ConfirmationDialog
+        open={!!clientToDelete}
+        onOpenChange={(isOpen) => !isOpen && setClientToDelete(null)}
+        onConfirm={handleDeleteClient}
+        title="Are you sure you want to delete this client?"
+        description="This action cannot be undone. All waste data and reports for this client will also be permanently deleted."
+      />
     </div>
   );
 };

@@ -58,7 +58,7 @@ const getClientById = async (req, res) => {
     const client = await prisma.client.findFirst({
       where: {
         id: id,
-        tenantId: req.user.tenantId, // Security check: ensures user can only access their own clients
+        tenantId: req.user.tenantId, // Security check
       },
     });
 
@@ -73,11 +73,79 @@ const getClientById = async (req, res) => {
   }
 };
 
-// --- THIS IS THE CRITICAL PART ---
+// @desc    Update an existing client
+// @route   PUT /api/clients/:id
+// @access  Private
+const updateClient = async (req, res) => {
+    const { id } = req.params;
+    const { companyName, contactPerson, email, phone, address } = req.body;
+
+    if (!companyName) {
+        return res.status(400).json({ message: 'Company name is required.' });
+    }
+
+    try {
+        // Security check: ensure the client exists and belongs to the user's tenant
+        const client = await prisma.client.findFirst({
+            where: { id, tenantId: req.user.tenantId },
+        });
+
+        if (!client) {
+            return res.status(404).json({ message: 'Client not found or you do not have permission.' });
+        }
+
+        const updatedClient = await prisma.client.update({
+            where: { id },
+            data: {
+                companyName,
+                contactPerson,
+                email,
+                phone,
+                address,
+            },
+        });
+        res.json(updatedClient);
+    } catch (error) {
+        console.error("Error updating client:", error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+// @desc    Delete a client
+// @route   DELETE /api/clients/:id
+// @access  Private
+const deleteClient = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // Security check
+        const client = await prisma.client.findFirst({
+            where: { id, tenantId: req.user.tenantId },
+        });
+
+        if (!client) {
+            return res.status(404).json({ message: 'Client not found or you do not have permission.' });
+        }
+
+        // The `onDelete: Cascade` in our Prisma schema will automatically delete
+        // all related WasteData and Report records for this client.
+        await prisma.client.delete({
+            where: { id },
+        });
+
+        res.json({ message: 'Client deleted successfully.' });
+    } catch (error) {
+        console.error("Error deleting client:", error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 
 module.exports = {
   getClients,
   createClient,
   getClientById,
+  updateClient,
+  deleteClient,
 };
 

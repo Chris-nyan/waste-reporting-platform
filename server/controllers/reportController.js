@@ -171,7 +171,7 @@ const getWasteTypesForPeriod = async (req, res) => {
     }
 };
 /**
- * @desc    Get a single generated report by its ID, including its underlying waste data
+ * @desc    Get a single generated report by its ID, with all data filtered by the report's date range.
  * @route   GET /api/reports/:id
  * @access  Private
  */
@@ -192,10 +192,13 @@ const getReportById = async (req, res) => {
         if (!report) {
             return res.status(404).json({ message: 'Report not found.' });
         }
+
+        // Fetch the underlying waste data for the report period
         const wasteData = await prisma.wasteData.findMany({
             where: {
                 clientId: report.clientId,
-                recycledDate: {
+                // fetch any waste entry that was PICKED UP during the period
+                pickupDate: {
                     gte: report.startDate,
                     lte: report.endDate,
                 },
@@ -204,13 +207,27 @@ const getReportById = async (req, res) => {
                 }
             },
             include: {
-                wasteType: true // Include the name of the waste type for the chart
+                wasteType: true,
+                // fetch recycling processes that occurred WITHIN the report's date range.
+                recyclingProcesses: {
+                    where: {
+                        recycledDate: {
+                            gte: report.startDate,
+                            lte: report.endDate,
+                        }
+                    },
+                    orderBy: {
+                        recycledDate: 'asc'
+                    }
+                }
             }
         });
+
         const fullReportPayload = {
             ...report,
-            wasteData: wasteData,
+            wasteData: wasteData, // contains the correctly filtered recycling logs
         };
+
         res.json(fullReportPayload);
 
     } catch (error) {

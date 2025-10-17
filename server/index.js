@@ -11,6 +11,7 @@ const logisticRoutes = require('./routes/logisticRoutes.js');
 const masterRoutes = require('./routes/masterRoutes.js');
 const reportRoutes = require('./routes/reportRoutes.js');
 const settingsRoutes = require('./routes/settingsRoutes.js');
+const recyclingProcessRoutes = require('./routes/recyclingProcessRoutes.js');
 
 // Load environment variables
 dotenv.config();
@@ -36,6 +37,7 @@ app.use('/api/waste-data', wasteRoutes);
 app.use('/api/logistics', logisticRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/recycling-processes', recyclingProcessRoutes);
 
 
 

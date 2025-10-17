@@ -76,15 +76,11 @@ async function getDistanceKm(origin, destination) {
   }
 }
 /**
- * @desc    Create a new waste data entry for a client
+ * @desc    Create a new waste data entry (now represents the initial lot)
  * @route   POST /api/waste-data
  * @access  Private
  */
 const createWasteEntry = async (req, res) => {
-  // --- DEBUGGING: Log the incoming request body from the frontend ---
-  console.log("Backend received body:", req.body);
-  console.log("Backend received files:", req.files);
-
   const {
     clientId,
     wasteTypeId,
@@ -99,10 +95,8 @@ const createWasteEntry = async (req, res) => {
     pickupDate,
   } = req.body;
 
-  if (!clientId || !wasteTypeId || !quantity || !unit || !recycledDate) {
-    console.error("Validation Failed. Missing one or more required fields.");
-    console.error({ clientId, wasteTypeId, quantity, unit, recycledDate });
-    return res.status(400).json({ message: 'Missing required fields. Please check server logs for details.' });
+  if (!clientId || !wasteTypeId || !quantity || !unit) {
+    return res.status(400).json({ message: 'Client, waste type, quantity, and unit are required.' });
   }
 
   try {
@@ -114,41 +108,57 @@ const createWasteEntry = async (req, res) => {
       return res.status(404).json({ message: 'Client not found or you do not have permission.' });
     }
 
-    let imageUrl = [];
+    let imageUrls = [];
     if (req.files) {
-      const wasteImages = req.files['wasteImages'] || [];
-      const recyclingImages = req.files['recyclingImages'] || [];
-      const allFiles = [...wasteImages, ...recyclingImages];
-      imageUrl = allFiles.map(file => `/uploads/${file.filename}`);
+      const allFiles = [...(req.files['wasteImages'] || []), ...(req.files['recyclingImages'] || [])];
+      imageUrls = allFiles.map(file => `/uploads/${file.filename}`);
     }
 
-    const quantityInKg = parseFloat(quantity) * (unitToKg[unit] || 1);
+    const initialQuantity = parseFloat(quantity);
+    let recycledQuantity = 0;
+    let status = "PENDING_RECYCLING";
+
+    // If a recycledDate is provided on creation, it means some amount was recycled immediately.
+    // For this simplified add-on, we'll assume the full amount was recycled if a date is given.
+    if (recycledDate) {
+      recycledQuantity = initialQuantity;
+      status = "FULLY_RECYCLED";
+    }
 
     const newWasteEntry = await prisma.wasteData.create({
       data: {
         client: { connect: { id: clientId } },
         createdBy: { connect: { id: req.user.userId } },
         wasteType: { connect: { id: wasteTypeId } },
-        ...(recyclingTechnologyId && {
-          recyclingTechnology: { connect: { id: recyclingTechnologyId } }
-        }),
-        ...(pickupLocationId && {
-          pickupLocation: { connect: { id: pickupLocationId } }
-        }),
-        ...(facilityId && {
-          facility: { connect: { id: facilityId } }
-        }),
-        ...(vehicleTypeId && {
-          vehicleType: { connect: { id: vehicleTypeId } }
-        }),
-        quantity: parseFloat(quantity) * (unitToKg[unit] || 1),
+        quantity: initialQuantity,
         unit,
-        recycledDate: new Date(recycledDate),
         pickupDate: pickupDate ? new Date(pickupDate) : null,
+
+        // --- ADD-ON FIELDS ---
+        recycledQuantity: recycledQuantity,
+        status: status,
+
+        // Legacy fields for initial entry details if provided
+        recycledDate: recycledDate ? new Date(recycledDate) : null,
+        recyclingTechnologyId: recyclingTechnologyId,
+        pickupLocationId: pickupLocationId,
+        facilityId: facilityId,
+        vehicleTypeId: vehicleTypeId,
         distanceKm: distanceKm ? parseFloat(distanceKm) : null,
-        imageUrl,
+        imageUrls, // Corrected from imageUrl to imageUrls
       },
     });
+
+    // If an initial recycling event happened, create the first process record for it
+    if (recycledDate) {
+      await prisma.recyclingProcess.create({
+        data: {
+          wasteDataId: newWasteEntry.id,
+          quantityRecycled: recycledQuantity,
+          recycledDate: new Date(recycledDate)
+        }
+      });
+    }
 
     res.status(201).json(newWasteEntry);
   } catch (error) {
@@ -158,64 +168,38 @@ const createWasteEntry = async (req, res) => {
 };
 
 /**
- * @desc    Get all waste data entries for a specific client
- * @route   GET /api/waste-data/:clientId
+ * @desc    Get all waste data entries for a specific client (with progress)
+ * @route   GET /api/waste-data/client/:clientId
  * @access  Private
  */
 const getWasteEntriesForClient = async (req, res) => {
   try {
     const { clientId } = req.params;
 
-    // Ensure client belongs to current tenant
     const client = await prisma.client.findFirst({
       where: { id: clientId, tenantId: req.user.tenantId },
     });
     if (!client) {
       return res.status(404).json({ message: 'Client not found.' });
     }
-
-    // Fetch all waste data entries
     const wasteEntries = await prisma.wasteData.findMany({
       where: { clientId },
-      orderBy: { recycledDate: 'desc' },
+      orderBy: { pickupDate: 'desc' },
       include: {
-        wasteType: { include: { category: true } },
-        recyclingTechnology: { select: { id: true, name: true } },
-        pickupLocation: { select: { id: true, name: true, fullAddress: true } },
-        facility: { select: { id: true, name: true, fullAddress: true } },
-        vehicleType: { select: { id: true, name: true } },
+        wasteType: {
+          include: { category: true },
+        },
+        recyclingProcesses: {
+          orderBy: { recycledDate: 'desc' },
+        },
+        pickupLocation: true, 
+        facility: true,        
+        vehicleType: true,     
       },
     });
 
-    // Format response data for frontend
-    const formattedEntries = wasteEntries.map(entry => ({
-      id: entry.id,
-      pickupDate: entry.pickupDate,
-      recycledDate: entry.recycledDate,
-      quantity: entry.quantity,
-      unit: entry.unit,
-      distanceKm: entry.distanceKm,
+    res.json(wasteEntries);
 
-      wasteCategory: entry.wasteType?.category?.name || 'N/A',
-      wasteType: entry.wasteType?.name || 'N/A',
-      recyclingTechnology: entry.recyclingTechnology?.name || 'N/A',
-
-      pickupLocation: entry.pickupLocation?.name || 'N/A',
-      pickupAddress: entry.pickupLocation?.fullAddress || 'N/A',
-
-      facility: entry.facility?.name || 'N/A',
-      facilityAddress: entry.facility?.fullAddress || 'N/A',
-
-      vehicleType: entry.vehicleType?.name || 'N/A',
-
-      imageUrls: Array.isArray(entry.imageUrl)
-        ? entry.imageUrl
-        : entry.imageUrl
-          ? JSON.parse(entry.imageUrl)
-          : [],
-    }));
-
-    res.json(formattedEntries);
   } catch (error) {
     console.error("Error fetching waste entries:", error);
     res.status(500).json({ message: 'Internal server error' });

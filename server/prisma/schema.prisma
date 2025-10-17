@@ -100,42 +100,61 @@ model RecyclingTechnology {
 
 
 // =======================================
-// WasteData MODEL
+// WasteData MODEL (WITH ADD-ONS)
 // =======================================
 model WasteData {
-  id            String    @id @default(cuid())
-  wasteType     WasteType @relation(fields: [wasteTypeId], references: [id])
-  wasteTypeId   String
-  quantity      Float
-  unit          String
-  recycledDate  DateTime
+  id                      String    @id @default(cuid())
+  wasteType               WasteType @relation(fields: [wasteTypeId], references: [id])
+  wasteTypeId             String
+  quantity                Float
+  unit                    String
+  recycledDate            DateTime // This may represent the date of the FIRST or LAST recycling event
+  recyclingTechnology     RecyclingTechnology? @relation(fields: [recyclingTechnologyId], references: [id])
+  recyclingTechnologyId   String?
+  pickupLocation          PickupLocation?      @relation(fields: [pickupLocationId], references: [id])
+  pickupLocationId        String?
+  facility                Facility?            @relation(fields: [facilityId], references: [id])
+  facilityId              String?
+  vehicleType             VehicleType?         @relation(fields: [vehicleTypeId], references: [id])
+  vehicleTypeId           String?
+  distanceKm              Float?
+  pickupDate              DateTime?
+  imageUrl                String[]             @default([])
+
+  // --- NEW ADD-ON FIELDS TO TRACK PROGRESS ---
+  recycledQuantity        Float                @default(0) // Tracks the total amount recycled from this entry
+  status                  String               @default("PENDING_RECYCLING") // e.g., PENDING, PARTIALLY_RECYCLED, FULLY_RECYCLED
   
-  recyclingTechnology   RecyclingTechnology? @relation(fields: [recyclingTechnologyId], references: [id])
-  recyclingTechnologyId String?
-  
-  // --- LOGISTICS (UPDATED) ---
-  // The old string fields will be replaced by relations
-  // pickupAddress    String? // REMOVED
-  // facilityAddress  String? // REMOVED
-  // vehicleType      String? // REMOVED
-  
-  pickupLocation   PickupLocation? @relation(fields: [pickupLocationId], references: [id])
-  pickupLocationId String?
-  facility         Facility?       @relation(fields: [facilityId], references: [id])
-  facilityId       String?
-  vehicleType      VehicleType?    @relation(fields: [vehicleTypeId], references: [id])
-  vehicleTypeId    String?
-  
-  distanceKm    Float?
-  pickupDate    DateTime?
-  imageUrl      String[]  @default([])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId      String
-  createdBy     User      @relation(fields: [createdById], references: [id])
-  createdById   String
+  // --- NEW RELATION TO RECYCLING EVENTS ---
+  recyclingProcesses      RecyclingProcess[]
+
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  client                  Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId                String
+  createdBy               User                 @relation(fields: [createdById], references: [id])
+  createdById             String
   @@index([clientId])
+}
+
+// =======================================
+// NEW MODEL: RecyclingProcess (ADD-ON)
+// =======================================
+model RecyclingProcess {
+  id                    String    @id @default(cuid())
+  quantityRecycled      Float     // Amount processed in this specific action
+  recycledDate          DateTime  // The date of THIS specific recycling event
+  
+  // Relations
+  wasteData             WasteData            @relation(fields: [wasteDataId], references: [id], onDelete: Cascade)
+  wasteDataId           String
+  
+  // You can add more specific details for each process if needed in the future
+  // e.g., facility, technology used for this specific batch, etc.
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  @@index([wasteDataId])
 }
 
 model Facility {

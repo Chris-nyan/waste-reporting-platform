@@ -7,6 +7,7 @@ import LatoRegular from '/fonts/Lato-Regular.ttf';
 import LatoBold from '/fonts/Lato-Bold.ttf';
 import LatoItalic from '/fonts/Lato-Italic.ttf';
 import LatoBoldItalic from '/fonts/Lato-BoldItalic.ttf';
+import { format } from 'date-fns';
 
 // --- FIX: Import images directly ---
 // Make sure you have created a 'src/assets' folder and placed your images there.
@@ -120,6 +121,14 @@ const styles = StyleSheet.create({
   tocLeader: { flexGrow: 1, borderBottomWidth: 1, borderBottomColor: colors.lightGray, borderStyle: 'dotted', marginHorizontal: 8, transform: 'translateY(-4px)' },
   tocPageNum: { fontSize: 12, color: colors.textPrimary, fontFamily: 'Oswald' },
 
+  table: { display: "table", width: "auto", borderStyle: "solid", borderWidth: 1, borderColor: colors.lightGray, marginTop: 15 },
+  tableRow: { margin: "auto", flexDirection: "row" },
+  tableColHeader: { width: "25%", borderStyle: "solid", borderWidth: 1, borderColor: colors.lightGray, backgroundColor: colors.bgGray, padding: 5 },
+  tableCol: { width: "25%", borderStyle: "solid", borderWidth: 1, borderColor: colors.lightGray, padding: 5 },
+  tableHeader: { fontFamily: 'Helvetica-Bold', fontSize: 9 },
+  tableCell: { fontSize: 9 },
+  tableCellRight: { textAlign: 'right' },
+
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 20 },
   kpiItem: { width: '32%', backgroundColor: colors.bgGray, borderWidth: 1, borderColor: colors.lightGray, borderRadius: 5, padding: 12, marginBottom: 10, alignItems: 'center' },
   kpiValue: { fontFamily: 'Oswald', fontSize: 20, color: colors.secondary },
@@ -150,6 +159,12 @@ const Footer = ({ clientName }) => (
 
 const ReportPDFDocument = ({ report, chartImages }) => {
   const period = `${new Date(report.startDate).toLocaleDateString('en-GB')} to ${new Date(report.endDate).toLocaleDateString('en-GB')}`;
+  const recyclingLog = report.wasteData.flatMap(lot =>
+    lot.recyclingProcesses.map(process => ({
+      ...process,
+      wasteTypeName: lot.wasteType.name
+    }))
+  ).sort((a, b) => new Date(a.recycledDate) - new Date(b.recycledDate));
 
   return (
     <Document author="Your Company" title={`Carbon Emission Report for ${report.client.companyName}`}>
@@ -204,7 +219,7 @@ const ReportPDFDocument = ({ report, chartImages }) => {
           <View style={styles.kpiItem}><Text style={styles.kpiValue}>{report.treesSaved}</Text><Text style={styles.kpiLabel}>Trees Saved (Equivalent)</Text></View>
           <View style={styles.kpiItem}><Text style={styles.kpiValue}>{report.landfillSpaceSaved} m³</Text><Text style={styles.kpiLabel}>Landfill Space Saved</Text></View>
         </View>
-         <View >
+        <View >
           <Text style={styles.h2}>Monthly Recycling Trend</Text>
           <Text style={styles.paragraph}>
             This chart illustrates the total quantity of materials recycled each month during the reporting period, totaling <Text style={{ fontWeight: 'bold' }}>{report.totalWeightRecycled} kg</Text>. It is a key indicator of operational consistency and helps identify trends in waste generation and recycling performance over time.
@@ -260,7 +275,23 @@ const ReportPDFDocument = ({ report, chartImages }) => {
 
       <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="appendix">
         <Text style={styles.h1}>6. Appendix & Disclaimer</Text>
-        <Text style={styles.h2}>Glossary of Terms</Text>
+        <Text style={styles.h2}>6.1 Detailed Recycling Log</Text>
+        <Text style={styles.paragraph}>The following table details each individual recycling process that occurred during the reporting period.</Text>
+        <View style={styles.table}>
+            <View style={styles.tableRow}>
+                <View style={styles.tableColHeader}><Text style={styles.tableHeader}>Date Recycled</Text></View>
+                <View style={styles.tableColHeader}><Text style={styles.tableHeader}>Waste Type</Text></View>
+                <View style={styles.tableColHeader}><Text style={[styles.tableHeader, styles.tableCellRight]}>Quantity (KG)</Text></View>
+            </View>
+            {recyclingLog.map(log => (
+                <View key={log.id} style={styles.tableRow} wrap={false}>
+                    <View style={styles.tableCol}><Text style={styles.tableCell}>{format(new Date(log.recycledDate), 'yyyy-MM-dd')}</Text></View>
+                    <View style={styles.tableCol}><Text style={styles.tableCell}>{log.wasteTypeName}</Text></View>
+                    <View style={styles.tableCol}><Text style={[styles.tableCell, styles.tableCellRight]}>{log.quantityRecycled.toLocaleString()}</Text></View>
+                </View>
+            ))}
+        </View>
+        <Text style={styles.h2}>6.2 Glossary of Terms</Text>
         <Text style={styles.paragraph}><Text style={{ fontWeight: 'bold' }}>CO₂e (Carbon Dioxide Equivalent):</Text> A standard unit for measuring carbon footprints. It converts the impact of different greenhouse gases into the equivalent amount of carbon dioxide.</Text>
         <Text style={styles.paragraph}><Text style={{ fontWeight: 'bold' }}>Waste Diversion Rate:</Text> The percentage of total waste generated that is diverted from landfill disposal through recycling, composting, or reuse.</Text>
         <Text style={styles.paragraph}><Text style={{ fontWeight: 'bold' }}>Net GHG Emissions:</Text> The final balance of emissions after subtracting the total avoided emissions from the total direct emissions generated by waste management activities.</Text>

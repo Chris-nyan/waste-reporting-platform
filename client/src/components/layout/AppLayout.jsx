@@ -28,6 +28,7 @@ const tenantNavLinks = [
   { to: '/app/dashboard', icon: Home, label: 'Dashboard' },
   { to: '/app/clients', icon: Users, label: 'Clients' },
   { to: '/app/reports', icon: LineChart, label: 'Reports' },
+  { to: '/app/settings', icon: CircleUser, label: 'Settings' },
 
 ];
 

@@ -76,34 +76,27 @@ async function getDistanceKm(origin, destination) {
   }
 }
 /**
- * @desc    Create a new waste data entry for a client
+ * @desc    Create a new waste data entry (now represents the initial lot)
  * @route   POST /api/waste-data
  * @access  Private
  */
 const createWasteEntry = async (req, res) => {
-  // --- DEBUGGING: Log the incoming request body from the frontend ---
-  console.log("Backend received body:", req.body);
-  console.log("Backend received files:", req.files);
-
   const {
     clientId,
-    wasteCategoryId,
     wasteTypeId,
     quantity,
     unit,
     recycledDate,
     recyclingTechnologyId,
-    pickupAddress,
-    facilityAddress,
+    pickupLocationId,
+    facilityId,
+    vehicleTypeId,
     distanceKm,
-    vehicleType,
     pickupDate,
   } = req.body;
 
-  if (!clientId || !wasteTypeId || !quantity || !unit || !recycledDate) {
-    console.error("Validation Failed. Missing one or more required fields.");
-    console.error({ clientId, wasteTypeId, quantity, unit, recycledDate });
-    return res.status(400).json({ message: 'Missing required fields. Please check server logs for details.' });
+  if (!clientId || !wasteTypeId || !quantity || !unit) {
+    return res.status(400).json({ message: 'Client, waste type, quantity, and unit are required.' });
   }
 
   try {
@@ -115,46 +108,57 @@ const createWasteEntry = async (req, res) => {
       return res.status(404).json({ message: 'Client not found or you do not have permission.' });
     }
 
-    let imageUrl = [];
+    let imageUrls = [];
     if (req.files) {
-      const wasteImages = req.files['wasteImages'] || [];
-      const recyclingImages = req.files['recyclingImages'] || [];
-      const allFiles = [...wasteImages, ...recyclingImages];
-      imageUrl = allFiles.map(file => `/uploads/${file.filename}`);
+      const allFiles = [...(req.files['wasteImages'] || []), ...(req.files['recyclingImages'] || [])];
+      imageUrls = allFiles.map(file => `/uploads/${file.filename}`);
     }
 
-    const quantityInKg = parseFloat(quantity) * (unitToKg[unit] || 1);
+    const initialQuantity = parseFloat(quantity);
+    let recycledQuantity = 0;
+    let status = "PENDING_RECYCLING";
+
+    // If a recycledDate is provided on creation, it means some amount was recycled immediately.
+    // For this simplified add-on, we'll assume the full amount was recycled if a date is given.
+    if (recycledDate) {
+      recycledQuantity = initialQuantity;
+      status = "FULLY_RECYCLED";
+    }
 
     const newWasteEntry = await prisma.wasteData.create({
       data: {
-        // --- THIS IS THE CRITICAL FIX ---
-        // Instead of providing clientId directly, we use 'connect'
-        // to establish the relation to the existing Client record.
-        client: {
-          connect: { id: clientId }
-        },
-        createdBy: {
-          connect: { id: req.user.userId }
-        },
-        wasteType: {
-          connect: { id: wasteTypeId }
-        },
-        ...(recyclingTechnologyId && {
-          recyclingTechnology: {
-            connect: { id: recyclingTechnologyId }
-          }
-        }),
-        quantity: quantityInKg,
-        unit: unit,
-        recycledDate: new Date(recycledDate),
-        pickupAddress,
-        facilityAddress,
-        distanceKm: distanceKm ? parseFloat(distanceKm) : null,
-        vehicleType,
+        client: { connect: { id: clientId } },
+        createdBy: { connect: { id: req.user.userId } },
+        wasteType: { connect: { id: wasteTypeId } },
+        quantity: initialQuantity,
+        unit,
         pickupDate: pickupDate ? new Date(pickupDate) : null,
-        imageUrl,
+
+        // --- ADD-ON FIELDS ---
+        recycledQuantity: recycledQuantity,
+        status: status,
+
+        // Legacy fields for initial entry details if provided
+        recycledDate: recycledDate ? new Date(recycledDate) : null,
+        recyclingTechnologyId: recyclingTechnologyId,
+        pickupLocationId: pickupLocationId,
+        facilityId: facilityId,
+        vehicleTypeId: vehicleTypeId,
+        distanceKm: distanceKm ? parseFloat(distanceKm) : null,
+        imageUrls, // Corrected from imageUrl to imageUrls
       },
     });
+
+    // If an initial recycling event happened, create the first process record for it
+    if (recycledDate) {
+      await prisma.recyclingProcess.create({
+        data: {
+          wasteDataId: newWasteEntry.id,
+          quantityRecycled: recycledQuantity,
+          recycledDate: new Date(recycledDate)
+        }
+      });
+    }
 
     res.status(201).json(newWasteEntry);
   } catch (error) {
@@ -164,14 +168,14 @@ const createWasteEntry = async (req, res) => {
 };
 
 /**
- * @desc    Get all waste data entries for a specific client
- * @route   GET /api/waste-data/:clientId
+ * @desc    Get all waste data entries for a specific client (with progress)
+ * @route   GET /api/waste-data/client/:clientId
  * @access  Private
  */
 const getWasteEntriesForClient = async (req, res) => {
-  // This function will also be updated to return the full related data
   try {
     const { clientId } = req.params;
+
     const client = await prisma.client.findFirst({
       where: { id: clientId, tenantId: req.user.tenantId },
     });
@@ -180,20 +184,22 @@ const getWasteEntriesForClient = async (req, res) => {
     }
     const wasteEntries = await prisma.wasteData.findMany({
       where: { clientId },
-      orderBy: { recycledDate: 'desc' },
+      orderBy: { pickupDate: 'desc' },
       include: {
-        wasteType: { include: { category: true } },
-        recyclingTechnology: true,
-      }
+        wasteType: {
+          include: { category: true },
+        },
+        recyclingProcesses: {
+          orderBy: { recycledDate: 'desc' },
+        },
+        pickupLocation: true, 
+        facility: true,        
+        vehicleType: true,     
+      },
     });
-    // Remap data to be more frontend friendly
-    const formattedEntries = wasteEntries.map(entry => ({
-      ...entry,
-      wasteCategory: entry.wasteType.category.name,
-      wasteType: entry.wasteType.name,
-      recyclingTechnology: entry.recyclingTechnology?.name || null,
-    }));
-    res.json(formattedEntries);
+
+    res.json(wasteEntries);
+
   } catch (error) {
     console.error("Error fetching waste entries:", error);
     res.status(500).json({ message: 'Internal server error' });
@@ -215,9 +221,9 @@ const updateWasteEntry = async (req, res) => {
     unit,
     recycledDate,
     recyclingTechnologyId,
-    vehicleType,
-    pickupAddress,
-    facilityAddress,
+    vehicleTypeId,
+    pickupLocationId,
+    facilityId,
     distanceKm,
   } = req.body;
 
@@ -235,15 +241,15 @@ const updateWasteEntry = async (req, res) => {
       where: { id },
       data: {
         pickupDate: pickupDate ? new Date(pickupDate) : undefined,
-        wasteTypeId: wasteTypeId,
+        wasteTypeId,
         quantity: quantity ? parseFloat(quantity) : undefined,
-        unit: unit,
+        unit,
         recycledDate: recycledDate ? new Date(recycledDate) : undefined,
-        recyclingTechnologyId: recyclingTechnologyId,
-        vehicleType: vehicleType,
-        pickupAddress: pickupAddress,
-        facilityAddress: facilityAddress,
+        recyclingTechnologyId,
         distanceKm: distanceKm ? parseFloat(distanceKm) : undefined,
+        ...(pickupLocationId && { pickupLocationId }),
+        ...(facilityId && { facilityId }),
+        ...(vehicleTypeId && { vehicleTypeId }),
       },
     });
 
@@ -286,134 +292,128 @@ const deleteWasteEntry = async (req, res) => {
   }
 };
 
-// ===============================================
-// Generate Excel Template
-// ===============================================
+
 const getTemplate = async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
-    // --- Helper function to style header rows ---
+
     const styleHeaderRow = (worksheet, rowHeight = 25) => {
       const headerRow = worksheet.getRow(1);
-      headerRow.font = {
-        name: 'Calibri',
-        size: 14, // Set font size
-        bold: true, // Make it bold
-        color: { argb: 'FFFFFFFF' } // White text
-      };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF004d40' } // Dark Green background
-      };
+      headerRow.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004d40' } };
       headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
       headerRow.height = rowHeight;
     };
-    // --- Sheet 1: Instructions ---
-    const instructionsSheet = workbook.addWorksheet('Instructions');
 
-    // --- NEW: Add a prominent instruction block ---
-    instructionsSheet.mergeCells('A1:D1');
-    const titleCell = instructionsSheet.getCell('A1');
-    titleCell.value = '⚠️ Important: Please Read Before Filling';
-    titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFBF0000' } }; // Dark Red
-    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    instructionsSheet.getRow(1).height = 30;
-
-    instructionsSheet.addRow([]); // Add a blank row for spacing
-
-    const instructions = [
-      '1. Do NOT change, rename, or delete any column headers in the "Data Entry" sheet.',
-      '2. Always use the exact IDs provided in the "Reference" sheets. Do not enter names or create your own IDs.',
-      '3. Please read the description for each column below carefully before entering your data.',
-    ];
-    instructions.forEach(inst => {
-      const row = instructionsSheet.addRow([inst]);
-      instructionsSheet.mergeCells(`A${row.number}:D${row.number}`);
-      row.getCell(1).font = { name: 'Calibri', size: 12, bold: true };
-    });
-
-    instructionsSheet.addRow([]); // Add another blank row
-    // --- END of new block ---
-
-
-    // Define and style the main instruction table header
-    const mainHeaderRow = instructionsSheet.addRow(['Column Name', 'Description', 'Required?', 'Example']);
-    mainHeaderRow.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
-    mainHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004d40' } };
-    mainHeaderRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    instructionsSheet.columns = [
-      { key: 'column', width: 25 }, { key: 'desc', width: 60 },
-      { key: 'req', width: 50 }, { key: 'ex', width: 35 },
-    ];
-
-    // Add the detailed instruction rows
-    instructionsSheet.addRows([
-      { column: 'pickupDate', desc: 'The date the material was picked up. Must be in YYYY-MM-DD format.', req: 'No', ex: '2025-10-05' }, // NEW
-      { column: 'recycledDate', desc: 'The date the material was recycled. Must be in YYYY-MM-DD format.', req: 'Yes', ex: '2025-10-07' },
-      { column: 'wasteTypeId', desc: 'The unique ID for the type of waste. Go to the "Reference - Waste Types" sheet, find the material, and copy the ID from the column next to it.', req: 'Yes', ex: 'cmg7otx650001s8v80f7kwbpb' },
-      { column: 'recyclingTechnologyId', desc: 'The unique ID for the recycling technology used. Go to the "Reference - Technologies" sheet and copy the ID. This is optional and can be left blank.', req: 'No', ex: 'clxyztechid001...' },
-      { column: 'quantity', desc: 'The numerical amount of the waste. Do not include units like "kg" here.', req: 'Yes', ex: '150.75' },
-      { column: 'unit', desc: 'The unit of measurement. Must be one of: KG, G, T, LB.', req: 'Yes', ex: 'KG' },
-      { column: 'pickupAddress', desc: 'The full street address where the waste was collected. Used to calculate distance. Can be left blank.', req: 'Optional unless you want to calculate carbon emission', ex: '123 Main St, Bangkok, Thailand' },
-      { column: 'facilityAddress', desc: 'The full street address of the recycling facility. Used to calculate distance. Can be left blank.', req: 'Optional unless you want to calculate carbon emisison', ex: '456 Industrial Park, Samut Prakan, Thailand' },
-      { column: 'vehicleType', desc: 'The type of vehicle used for transport (e.g., Truck, Van). This is optional.', req: 'Optional', ex: 'Truck' }
-    ]);
-    instructionsSheet.getColumn('desc').alignment = { wrapText: true, vertical: 'top' };
-
-    // --- Sheet 2: Data Entry ---
+    // =========================
+    // 1. Data Entry Sheet
+    // =========================
     const entrySheet = workbook.addWorksheet('Data Entry');
     entrySheet.columns = [
-      { header: 'pickupDate', key: 'pickupDate', width: 15 }, // NEW
+      { header: 'pickupDate', key: 'pickupDate', width: 15 },
       { header: 'recycledDate', key: 'recycledDate', width: 15 },
-      { header: 'wasteTypeId', key: 'wasteTypeId', width: 30 },
-      { header: 'recyclingTechnologyId', key: 'recyclingTechnologyId', width: 30 }, // NEW
+      { header: 'wasteTypeName', key: 'wasteTypeName', width: 25 },
+      { header: 'recyclingTechName', key: 'recyclingTechName', width: 25 },
       { header: 'quantity', key: 'quantity', width: 10 },
       { header: 'unit', key: 'unit', width: 10 },
-      { header: 'pickupAddress', key: 'pickupAddress', width: 40 },
-      { header: 'facilityAddress', key: 'facilityAddress', width: 40 },
-      { header: 'vehicleType', key: 'vehicleType', width: 20 },
+      { header: 'pickupLocationName', key: 'pickupLocationName', width: 25 },
+      { header: 'facilityName', key: 'facilityName', width: 25 },
+      { header: 'vehicleTypeName', key: 'vehicleTypeName', width: 25 },
     ];
     styleHeaderRow(entrySheet, 30);
+
+    // Add sample row
     entrySheet.addRow({
       pickupDate: '2025-10-05',
       recycledDate: '2025-10-06',
-      wasteTypeId: 'Copy ID from "Waste Types" sheet',
-      recyclingTechnologyId: 'Copy ID from "Technologies" sheet (Optional)',
-      quantity: 123.45,
+      wasteTypeName: '',
+      recyclingTechName: '',
+      quantity: 0,
       unit: 'KG',
+      pickupLocationName: '',
+      facilityName: '',
+      vehicleTypeName: '',
     });
 
-    // --- Sheet 3: Reference for Waste Types ---
-    const wasteTypeSheet = workbook.addWorksheet('Reference - Waste Types');
-    wasteTypeSheet.columns = [
-      { header: 'Waste Type Name', key: 'name', width: 30 },
-      { header: 'ID (Copy this value)', key: 'id', width: 30 },
-    ];
-    wasteTypeSheet.views = [{ state: 'frozen', ySplit: 1 }];
-    const wasteTypes = await prisma.wasteType.findMany({ select: { id: true, name: true } });
-    styleHeaderRow(wasteTypeSheet, 30);
-    wasteTypeSheet.addRows(wasteTypes);
+    // =========================
+    // 2. Load Reference Data
+    // =========================
+    const [wasteTypes, recyclingTechs, pickupLocations, facilities, vehicleTypes] =
+      await Promise.all([
+        prisma.wasteType.findMany({ select: { id: true, name: true } }),
+        prisma.recyclingTechnology.findMany({ select: { id: true, name: true } }),
+        prisma.pickupLocation.findMany({ select: { id: true, name: true } }),
+        prisma.facility.findMany({ select: { id: true, name: true } }),
+        prisma.vehicleType.findMany({ select: { id: true, name: true } }),
+      ]);
 
-    // --- Sheet 4: Reference for Technologies ---
-    const techSheet = workbook.addWorksheet('Reference - Technologies'); // NEW
-    techSheet.columns = [
-      { header: 'Technology Name', key: 'name', width: 30 },
-      { header: 'ID (Copy this value)', key: 'id', width: 30 },
-    ];
-    techSheet.views = [{ state: 'frozen', ySplit: 1 }];
-    const technologies = await prisma.recyclingTechnology.findMany({ select: { id: true, name: true } });
-    styleHeaderRow(techSheet, 30);
-    techSheet.addRows(technologies);
+    // =========================
+    // 3. Create Hidden Reference Sheets
+    // =========================
+    const createReferenceSheet = (sheetName, data) => {
+      const ws = workbook.addWorksheet(sheetName, { state: 'veryHidden' });
+      ws.columns = [
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'ID', key: 'id', width: 45 },
+      ];
+      ws.addRows(data.map(d => ({ name: d.name, id: d.id })));
+      styleHeaderRow(ws, 25);
+      return ws;
+    };
 
+    const wtSheet = createReferenceSheet('Ref_WasteTypes', wasteTypes);
+    const techSheet = createReferenceSheet('Ref_Technologies', recyclingTechs);
+    const pickupSheet = createReferenceSheet('Ref_PickupLocations', pickupLocations);
+    const facSheet = createReferenceSheet('Ref_Facilities', facilities);
+    const vehSheet = createReferenceSheet('Ref_VehicleTypes', vehicleTypes);
+
+    // =========================
+    // 4. Add Dropdowns
+    // =========================
+    const addDropdown = (columnLetter, refSheet, rowCount = 100) => {
+      for (let i = 2; i <= rowCount + 1; i++) {
+        entrySheet.getCell(`${columnLetter}${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`='${refSheet.name}'!$A$2:$A$${refSheet.rowCount}`],
+          showErrorMessage: true,
+          errorStyle: 'stop',
+          error: 'Please select a valid value from the list',
+        };
+      }
+    };
+
+    addDropdown('C', wtSheet); // wasteTypeName
+    addDropdown('D', techSheet); // recyclingTechName
+    addDropdown('G', pickupSheet); // pickupLocationName
+    addDropdown('H', facSheet); // facilityName
+    addDropdown('I', vehSheet); // vehicleTypeName
+
+    // =========================
+    // 5. Units Dropdown
+    // =========================
+    const units = ['KG', 'G', 'T', 'LB'];
+    for (let i = 2; i <= 101; i++) {
+      entrySheet.getCell(`F${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [`"${units.join(',')}"`],
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        error: 'Please select a valid unit',
+      };
+    }
+
+    // =========================
+    // 6. Send Workbook
+    // =========================
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="waste_data_template.xlsx"');
-
     await workbook.xlsx.write(res);
     res.end();
 
   } catch (error) {
-    console.error("Error generating Excel template:", error);
+    console.error('Error generating Excel template:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -428,13 +428,13 @@ const bulkCreateWasteEntries = async (req, res) => {
     return res.status(400).json({ message: 'Client ID and a file are required.' });
   }
 
-  // Security check to ensure the client belongs to the user's tenant
+  // Security check: verify client belongs to tenant
   const client = await prisma.client.findFirst({
-    where: { id: clientId, tenantId: req.user.tenantId }
+    where: { id: clientId, tenantId: req.user.tenantId },
   });
   if (!client) {
     if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
-    return res.status(404).json({ message: "Client not found or you do not have permission." });
+    return res.status(404).json({ message: 'Client not found or you do not have permission.' });
   }
 
   try {
@@ -446,93 +446,134 @@ const bulkCreateWasteEntries = async (req, res) => {
       throw new Error("The uploaded file must contain a sheet named 'Data Entry'.");
     }
 
-    const validWasteTypeIds = (await prisma.wasteType.findMany({ select: { id: true } })).map(wt => wt.id);
+    // ===============================================
+    // Load reference tables to map names
+    // ===============================================
+    const [wasteTypes, recyclingTechs, pickupLocations, facilities, vehicleTypes] =
+      await Promise.all([
+        prisma.wasteType.findMany({ select: { id: true, name: true } }),
+        prisma.recyclingTechnology.findMany({ select: { id: true, name: true } }),
+        prisma.pickupLocation.findMany({ select: { id: true, name: true, fullAddress: true } }),
+        prisma.facility.findMany({ select: { id: true, name: true, fullAddress: true } }),
+        prisma.vehicleType.findMany({ select: { id: true, name: true } }),
+      ]);
+
+    // Helper: map any name to actual ID
+    const mapId = (value, list) => {
+      if (!value) return null;
+      const val = String(value).trim().toLowerCase();
+      const match =
+        list.find(
+          (item) =>
+            item.id === value ||
+            item.shortId?.toLowerCase() === val ||
+            item.name?.toLowerCase() === val
+        ) || null;
+      return match ? match.id : null;
+    };
+
+    // ===============================================
+    // Unit Conversion Table
+    // ===============================================
+    const unitToKg = {
+      KG: 1,
+      G: 0.001,
+      TON: 1000,
+      L: 1, // optional if liquid weight ≈ 1kg/L
+    };
+
     const validatedData = [];
 
-    // Iterate over all rows starting from row 2 (to skip the header)
+    // ===============================================
+    // Process each row
+    // ===============================================
     for (let i = 2; i <= worksheet.rowCount; i++) {
       const row = worksheet.getRow(i);
 
-      // --- FIX: Access cells by column NUMBER, not by name ---
       const rowData = {
-        pickupDate: row.getCell(1).value, // NEW
+        pickupDate: row.getCell(1).value,
         recycledDate: row.getCell(2).value,
-        wasteTypeId: row.getCell(3).value,
-        recyclingTechnologyId: row.getCell(4).value,
+        wasteTypeValue: row.getCell(3).value,
+        recyclingTechValue: row.getCell(4).value,
         quantity: row.getCell(5).value,
         unit: row.getCell(6).value,
-        pickupAddress: row.getCell(7).value,
-        facilityAddress: row.getCell(8).value,
-        vehicleType: row.getCell(9).value,
+        pickupLocationValue: row.getCell(7).value,
+        facilityValue: row.getCell(8).value,
+        vehicleTypeValue: row.getCell(9).value,
       };
 
-      // Skip if the row is effectively empty (all primary fields are null)
-      if (!rowData.recycledDate && !rowData.wasteTypeId && !rowData.quantity) {
-        continue;
+      // Skip empty rows
+      if (!rowData.recycledDate && !rowData.wasteTypeValue && !rowData.quantity) continue;
+
+      // Required field validation
+      if (!rowData.pickupDate || !rowData.recycledDate || !rowData.wasteTypeValue || !rowData.quantity || !rowData.unit) {
+        throw new Error(`Row ${i} is missing required fields (pickupDate, recycledDate, wasteType, quantity, unit).`);
       }
 
-      // --- Validation ---
-      if (!rowData.pickupDate ||!rowData.recycledDate || !rowData.wasteTypeId || !rowData.quantity || !rowData.unit) {
-        throw new Error(`Row ${i} is missing one or more required values (pickupDate, recycledDate, wasteTypeId, quantity, unit).`);
-      }
-      if (!validWasteTypeIds.includes(String(rowData.wasteTypeId))) {
-        throw new Error(`Row ${i} has an invalid or unrecognized wasteTypeId: '${rowData.wasteTypeId}'`);
-      }
-      const parsedRecycledDate = new Date(rowData.recycledDate);
-      if (isNaN(parsedRecycledDate.getTime())) {
-        throw new Error(`Row ${i} has an invalid date for recycledDate. Use YYYY-MM-DD.`);
+      // Convert to actual IDs
+      const wasteTypeId = mapId(rowData.wasteTypeValue, wasteTypes);
+      const recyclingTechnologyId = mapId(rowData.recyclingTechValue, recyclingTechs);
+      const pickupLocationId = mapId(rowData.pickupLocationValue, pickupLocations);
+      const facilityId = mapId(rowData.facilityValue, facilities);
+      const vehicleTypeId = mapId(rowData.vehicleTypeValue, vehicleTypes);
+
+      if (!wasteTypeId) {
+        throw new Error(`Row ${i} has invalid Waste Type: '${rowData.wasteTypeValue}'`);
       }
 
-      let parsedPickupDate = null;
-      if (rowData.pickupDate) {
-        parsedPickupDate = new Date(rowData.pickupDate);
-        if (isNaN(parsedPickupDate.getTime())) {
-          throw new Error(`Row ${i} has an invalid date for pickupDate. Use YYYY-MM-DD.`);
+      // Validate and parse dates
+      const recycledDate = new Date(rowData.recycledDate);
+      const pickupDate = new Date(rowData.pickupDate);
+      if (isNaN(recycledDate.getTime()) || isNaN(pickupDate.getTime())) {
+        throw new Error(`Row ${i} has invalid date format. Use YYYY-MM-DD.`);
+      }
+
+      // Calculate distance if both addresses exist
+      let distanceKm = null;
+      if (pickupLocationId && facilityId) {
+        const pickupLoc = pickupLocations.find((p) => p.id === pickupLocationId);
+        const facilityLoc = facilities.find((f) => f.id === facilityId);
+        if (pickupLoc?.fullAddress && facilityLoc?.fullAddress) {
+          distanceKm = await getDistanceKm(pickupLoc.fullAddress, facilityLoc.fullAddress);
         }
       }
 
-      // Auto-calculate distance
-      const distance = await getDistanceKm(rowData.pickupAddress, rowData.facilityAddress);
+      // Parse quantity and convert to kg
+      const quantityKg = parseFloat(rowData.quantity) * (unitToKg[String(rowData.unit).toUpperCase()] || 1);
 
-      // Prepare the final object for Prisma
-      const entry = {
+      // ===============================================
+      // Prepare validated entry
+      // ===============================================
+      validatedData.push({
         clientId,
         createdById: req.user.userId,
-        wasteTypeId: String(rowData.wasteTypeId),
-        quantity: parseFloat(rowData.quantity) * (unitToKg[String(rowData.unit).toUpperCase()] || 1),
+        wasteTypeId,
+        recyclingTechnologyId,
+        pickupLocationId,
+        facilityId,
+        vehicleTypeId,
+        quantity: quantityKg,
         unit: String(rowData.unit).toUpperCase(),
-        recycledDate: parsedRecycledDate,
-        pickupDate: parsedPickupDate, // NEW: Set pickupDate same as recycledDate if not provided
-        pickupAddress: rowData.pickupAddress ? String(rowData.pickupAddress) : null,
-        facilityAddress: rowData.facilityAddress ? String(rowData.facilityAddress) : null,
-        distanceKm: distance,
-        vehicleType: rowData.vehicleType ? String(rowData.vehicleType) : null,
-      };
-
-      // Conditionally add the technology relation if it exists
-      if (rowData.recyclingTechnologyId) {
-        entry.recyclingTechnologyId = String(rowData.recyclingTechnologyId);
-      }
-
-      validatedData.push(entry);
+        recycledDate,
+        pickupDate,
+        distanceKm,
+      });
     }
 
-    // Final check and database insertion
+    // ===============================================
+    // Database Insertion
+    // ===============================================
     if (validatedData.length > 0) {
       const result = await prisma.wasteData.createMany({ data: validatedData });
       res.status(201).json({ message: `${result.count} entries created successfully!` });
     } else {
-      res.status(200).json({ message: "No new data rows were found in the uploaded file." });
+      res.status(200).json({ message: 'No valid rows found in the uploaded file.' });
     }
-
   } catch (error) {
-    console.error("Error processing bulk upload:", error);
+    console.error('Error processing bulk upload:', error);
     res.status(400).json({ message: error.message });
   } finally {
-    // Ensure the temporary file is always deleted
-    if (file && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
+    if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
   }
 };
 // Only the controller functions should be exported

@@ -188,7 +188,13 @@ const ReportPDFDocument = ({ report, chartImages }) => {
           <View style={styles.tocItem}><Link style={styles.tocLink} src="#methodology">2. Methodology</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>4</Text></View>
           <View style={styles.tocItem}><Link style={styles.tocLink} src="#kpis">3. Key Performance Indicators</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>5</Text></View>
           <View style={styles.tocItem}><Link style={styles.tocLink} src="#visuals">4. Data Visualizations</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>6</Text></View>
-          <View style={styles.tocItem}><Link style={styles.tocLink} src="#insights">5. Insights & Analysis</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>7</Text></View>
+          {report.questions && report.questions.length > 0 && (
+            <View style={styles.tocItem}>
+              <Link style={styles.tocLink} src="#insights">5. Insights & Analysis</Link>
+              <Text style={styles.tocLeader}></Text>
+              <Text style={styles.tocPageNum}>7</Text>
+            </View>
+          )}          
           <View style={styles.tocItem}><Link style={styles.tocLink} src="#appendix">6. Appendix & Disclaimer</Link><Text style={styles.tocLeader}></Text><Text style={styles.tocPageNum}>8</Text></View>
         </View>
       </PageWrapper>
@@ -263,33 +269,35 @@ const ReportPDFDocument = ({ report, chartImages }) => {
         </View>
       </PageWrapper>
 
-      <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="insights">
-        <Text style={styles.h1}>5. Insights & Analysis</Text>
-        {report.questions.map((q) => (
-          <View key={q.id} style={{ marginBottom: 20 }} wrap={false}>
-            <Text style={styles.h2}>{q.questionText}</Text>
-            <Text style={styles.paragraph}>{q.answerText || "No answer provided for this question."}</Text>
-          </View>
-        ))}
-      </PageWrapper>
+      {report.questions && report.questions.length > 0 && (
+        <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="insights">
+          <Text style={styles.h1}>5. Insights & Analysis</Text>
+          {report.questions.map((q) => (
+            <View key={q.id} style={{ marginBottom: 20 }} wrap={false}>
+              <Text style={styles.h2}>{q.questionText}</Text>
+              <Text style={styles.paragraph}>{q.answerText || "No answer provided for this question."}</Text>
+            </View>
+          ))}
+        </PageWrapper>
+      )}
 
       <PageWrapper headerText={`Report for ${report.client.companyName} | ${period}`} id="appendix">
         <Text style={styles.h1}>6. Appendix & Disclaimer</Text>
         <Text style={styles.h2}>6.1 Detailed Recycling Log</Text>
         <Text style={styles.paragraph}>The following table details each individual recycling process that occurred during the reporting period.</Text>
         <View style={styles.table}>
-            <View style={styles.tableRow}>
-                <View style={styles.tableColHeader}><Text style={styles.tableHeader}>Date Recycled</Text></View>
-                <View style={styles.tableColHeader}><Text style={styles.tableHeader}>Waste Type</Text></View>
-                <View style={styles.tableColHeader}><Text style={[styles.tableHeader, styles.tableCellRight]}>Quantity (KG)</Text></View>
+          <View style={styles.tableRow}>
+            <View style={styles.tableColHeader}><Text style={styles.tableHeader}>Date Recycled</Text></View>
+            <View style={styles.tableColHeader}><Text style={styles.tableHeader}>Waste Type</Text></View>
+            <View style={styles.tableColHeader}><Text style={[styles.tableHeader, styles.tableCellRight]}>Quantity (KG)</Text></View>
+          </View>
+          {recyclingLog.map(log => (
+            <View key={log.id} style={styles.tableRow} wrap={false}>
+              <View style={styles.tableCol}><Text style={styles.tableCell}>{format(new Date(log.recycledDate), 'yyyy-MM-dd')}</Text></View>
+              <View style={styles.tableCol}><Text style={styles.tableCell}>{log.wasteTypeName}</Text></View>
+              <View style={styles.tableCol}><Text style={[styles.tableCell, styles.tableCellRight]}>{log.quantityRecycled.toLocaleString()}</Text></View>
             </View>
-            {recyclingLog.map(log => (
-                <View key={log.id} style={styles.tableRow} wrap={false}>
-                    <View style={styles.tableCol}><Text style={styles.tableCell}>{format(new Date(log.recycledDate), 'yyyy-MM-dd')}</Text></View>
-                    <View style={styles.tableCol}><Text style={styles.tableCell}>{log.wasteTypeName}</Text></View>
-                    <View style={styles.tableCol}><Text style={[styles.tableCell, styles.tableCellRight]}>{log.quantityRecycled.toLocaleString()}</Text></View>
-                </View>
-            ))}
+          ))}
         </View>
         <Text style={styles.h2}>6.2 Glossary of Terms</Text>
         <Text style={styles.paragraph}><Text style={{ fontWeight: 'bold' }}>CO₂e (Carbon Dioxide Equivalent):</Text> A standard unit for measuring carbon footprints. It converts the impact of different greenhouse gases into the equivalent amount of carbon dioxide.</Text>

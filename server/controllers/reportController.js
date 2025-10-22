@@ -44,7 +44,7 @@ const formatNumber = (num) => parseFloat(num.toFixed(2));
  */
 const generateReport = async (req, res) => {
     // --- LOG FOR DATA REPORT CHECKING---
-    console.log("--- RECEIVED REQUEST BODY ON BACKEND ---");
+    // console.log("--- RECEIVED REQUEST BODY ON BACKEND ---");
     // console.log(JSON.stringify(req.body, null, 2));
     // --------------------
     const {

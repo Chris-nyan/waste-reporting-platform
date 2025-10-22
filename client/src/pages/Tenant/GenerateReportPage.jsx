@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import GeneratingAILoader from '@/components/ui/GeneratingAILoader';
 import api from '@/lib/api';
 import { reportSchemas } from '@/schemas/reportSchemas';
 import { cn } from '@/lib/utils';
@@ -22,7 +23,7 @@ const STEPS = [
     { id: 1, title: 'Configuration' },
     { id: 2, title: 'Data Selection' },
     { id: 3, title: 'Insights' },
-    { id: 4, title: 'Generate' }
+    { id: 4, title: 'Generate' },
 ];
 
 
@@ -258,10 +259,62 @@ const Step2SelectData = ({ form, masterData }) => {
     );
 };
 
+const Step2_5IncludeWriting = ({ onSelect }) => {
+    return (
+        <div className="flex flex-col space-y-6 p-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200">
+            {/* Header */}
+            <div className="flex flex-col space-y-2">
+                <h2 className="text-xl font-semibold text-gray-800">Include a Writing Section?</h2>
+                <p className="text-gray-600 text-sm">
+                    Adding a writing section allows you to provide custom insights in your report. Here are sample questions you might answer:
+                </p>
+                <div className="flex justify-center">
+                    <div className="flex items-center gap-2 bg-white border border-green-200 text-green-700 text-sm px-4 py-2 rounded-lg shadow-sm">
+                        <Sparkles className="h-4 w-4" />
+                        <span>Our AI assistance is ready to help you answer these questions efficiently.</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Sample Questions Preview */}
+            <ul className="flex flex-col gap-3">
+                {[
+                    "What are the key highlights of this report?",
+                    "Any recommendations for improvement?",
+                    "Additional comments or notes?"
+                ].map((q, idx) => (
+                    <li key={idx} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
+                        <span className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-green-100 text-green-700 font-medium">{idx + 1}</span>
+                        <p className="text-gray-700 text-sm">{q}</p>
+                    </li>
+                ))}
+            </ul>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 mt-2">
+                <Button
+                    onClick={() => onSelect(true)}
+                    className="flex-1 py-3 px-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium rounded-xl shadow-md hover:from-green-600 hover:to-emerald-700 transition-all duration-300"
+                >
+                    Yes, Include
+                </Button>
+
+                <Button
+                    onClick={() => onSelect(false)}
+                    className="flex-1 py-3 px-5 bg-gray-100 text-gray-700 font-medium rounded-xl border border-gray-300 shadow-sm hover:bg-gray-200 transition-all duration-300"
+                >
+                    No, Skip
+                </Button>
+            </div>
+        </div>
+    );
+};
+
 const Step3AnswerQuestions = ({ form, questionPage }) => {
     const { control, getValues, setValue } = form;
     const { fields } = useFieldArray({ control, name: "questions" });
     const [isGenerating, setIsGenerating] = useState(false);
+
 
     const questionsPerPage = 2;
     const pageCount = Math.ceil(fields.length / questionsPerPage);
@@ -297,8 +350,13 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
     };
 
     const handleSkip = () => {
-        fields.forEach((_, index) => { setValue(`questions.${index}.answerText`, "N/A"); });
-        // The main navigation will move to Step 4
+        // Fill all Step 3 questions with "N/A"
+        fields.forEach((_, index) =>
+            setValue(`questions.${index}.answerText`, "N/A")
+        );
+
+        // Call parent to skip the step
+        if (onSkip) onSkip();
     };
 
     return (
@@ -337,17 +395,6 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 flex-shrink-0">
-                    {/* Glass Skip Button */}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSkip}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white backdrop-blur-md border border-[#00C853]/30 text-gray hover:bg-green hover:border-[#00E676]/50 
-                        hover:scale-[1.03] transition-all duration-300 shadow-sm"
-                    >
-                        <X className="h-4 w-4" /> Skip Section
-                    </Button>
 
                     {/* Gradient Generate Button */}
                     <Button
@@ -364,6 +411,8 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
                         )}
                         <span>Generate with AI</span>
                     </Button>
+                    {/* Loader Overlay */}
+                    <GeneratingAILoader isLoading={isGenerating} />
                 </div>
             </div>
 
@@ -384,6 +433,37 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
                     );
                 })}
             </div>
+            {/* Loader Overlay */}
+            <GeneratingAILoader isLoading={isGenerating} />
+        </div>
+    );
+};
+const Step4ReadyToGenerate = () => {
+    return (
+        <div className="w-full h-full flex flex-col space-y-6 p-6 bg-gradient-to-br from-white to-gray-50 rounded-none shadow-none border-none">
+            {/* Header */}
+            <div className="flex flex-col space-y-2 text-center">
+                <h2 className="text-2xl font-semibold text-gray-800">Ready to Generate</h2>
+                <div className="flex justify-center mt-2">
+                    <div className="flex items-center gap-2 bg-white border border-green-200 text-green-700 text-sm px-4 py-2 rounded-lg shadow-sm">
+                        <span>All sections are set. Click the button below to generate your report.</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Optional Info / Preview Section */}
+            <ul className="flex flex-col gap-3">
+                {[
+                    "Make sure all report sections are completed.",
+                    "Review key highlights before generating.",
+                    "Ensure AI insights are included as needed."
+                ].map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <span className="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-green-100 text-green-700 font-medium">{idx + 1}</span>
+                        <p className="text-gray-700 text-sm">{item}</p>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 };
@@ -395,6 +475,8 @@ const GenerateReportPage = () => {
     const [masterData, setMasterData] = useState({ clients: [], masterReportQuestions: [] });
     const navigate = useNavigate();
     const [questionPage, setQuestionPage] = useState(0);
+    const [includeWritingSection, setIncludeWritingSection] = useState(null); // null = not selected, true/false = user choice
+    const [step3Skipped, setStep3Skipped] = useState(false);
 
     const form = useForm({
         resolver: zodResolver(reportSchemas),
@@ -419,15 +501,18 @@ const GenerateReportPage = () => {
     const onSubmit = async (data) => {
         setIsLoading(true);
         try {
-            // --- FIX: Manually get the latest values from the form state ---
+            // Get the latest form values
             const allFormData = form.getValues();
 
+            // Build payload
             const payload = {
-                ...allFormData, // Use the complete form data
+                ...allFormData,
                 startDate: allFormData.dateRange.from,
-                endDate: allFormData.dateRange.to
+                endDate: allFormData.dateRange.to,
+                // Include questions only if writing section is selected
+                questions: includeWritingSection ? allFormData.questions : [],
+                includeWritingSection, // optional: send boolean to backend for clarity
             };
-            // --- END FIX ---
 
             console.log("--- SENDING PAYLOAD FROM FRONTEND ---");
             console.log(JSON.stringify(payload, null, 2));
@@ -460,26 +545,26 @@ const GenerateReportPage = () => {
         // Step 2 validation
         if (step === 2) {
             const isValid = await form.trigger(["clientId", "dateRange", "includedWasteTypeIds"]);
-            if (isValid) setStep(3);
+            if (isValid) setStep(2.5);
             return;
         }
 
+
         // Step 3 validation (questions)
         if (step === 3) {
-            const questionsPerPage = 2;
-            const questionPageCount = Math.ceil(questionFields.length / questionsPerPage);
+            if (step3Skipped) {
+                setStep(4); // skip all question pages
+                return;
+            }
 
             if (questionPage < questionPageCount - 1) {
-                // Move to next question page without validating all questions yet
                 setQuestionPage(p => p + 1);
                 return;
             }
 
-            // Last question page: validate ALL questions
             const questionValidations = questionFields.map((_, index) => `questions.${index}.answerText`);
             const isValid = await form.trigger(questionValidations);
-
-            if (isValid) setStep(4); // Move to Generate step
+            if (isValid) setStep(4);
             return;
         }
     };
@@ -526,25 +611,70 @@ const GenerateReportPage = () => {
                     <div className="flex-1 overflow-y-auto py-4 pr-2">
                         {step === 1 && <Step1ConfigureReport form={form} />}
                         {step === 2 && <Step2SelectData form={form} masterData={masterData} />}
-                        {step === 3 && <Step3AnswerQuestions form={form} questionPage={questionPage} />}
-                        {step === 4 && <div><h3 className="text-lg font-medium">Ready to Generate</h3><p className="text-sm text-gray-500 mt-2">Click the button below to generate your report.</p></div>}
+                        {step === 2.5 && (
+                            <Step2_5IncludeWriting
+                                onSelect={(choice) => {
+                                    setIncludeWritingSection(choice);
+                                    if (choice) {
+                                        setStep(3); // go to questions
+                                    } else {
+                                        setStep(4); // skip questions, go to generate
+                                    }
+                                }}
+                            />
+                        )}
+                        {step === 3 && (
+                            <Step3AnswerQuestions
+                                form={form}
+                                questionPage={questionPage}
+                                onSkip={() => {
+                                    setStep3Skipped(true); // mark as skipped
+                                    setStep(4); // jump to Step 4
+                                }}
+                            />
+                        )}
+                        {step === 4 && <Step4ReadyToGenerate />}
                     </div>
 
                     <div className="flex justify-between items-center pt-4 border-t flex-shrink-0 mt-auto">
-                        <Button type="button" variant="outline" onClick={handleBack} disabled={step === 1 && questionPage === 0}>Back</Button>
+
+                        <Link to="/app/reports">
+                            <Button type="button" variant="danger" className="bg-red-600 text-white">
+                                Cencel Generating Report
+                            </Button>
+                        </Link>
+
                         <div className="flex items-center gap-2">
-                            <Link to="/app/reports"><Button type="button" variant="ghost">Cancel</Button></Link>
-                            {step < STEPS.length && (
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleBack}
+                                disabled={step === 1 && questionPage === 0}
+                            >
+                                Back
+                            </Button>
+
+                            {/* Only show Next button if NOT step 2.5 */}
+                            {step !== 2.5 && step < 4 && (
                                 <Button
                                     type="button"
                                     onClick={handleNext}
                                     className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                                    disabled={step === 3 && step3Skipped}
                                 >
-                                    {step === 3 && questionPage < questionPageCount - 1 ? 'Next Questions' : 'Next'}
+                                    {step === 3 && !step3Skipped && questionPage < questionPageCount - 1
+                                        ? 'Next Questions'
+                                        : 'Next'}
                                 </Button>
                             )}
-                            {step === STEPS.length && (
-                                <Button type="submit" disabled={isLoading} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+
+                            {step === 4 && (
+                                <Button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                                >
                                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Generate Report
                                 </Button>
                             )}

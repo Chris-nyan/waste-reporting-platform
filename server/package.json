@@ -19,6 +19,7 @@
     "fast-csv": "^5.0.5",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
     "puppeteer": "^24.23.0"
   },
   "devDependencies": {

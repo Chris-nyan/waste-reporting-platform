@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, UploadCloud, Image as ImageIcon, X, Calendar as CalendarIcon, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, UploadCloud, Sparkles, Image as ImageIcon, X, Calendar as CalendarIcon, Check } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -259,31 +259,128 @@ const Step2SelectData = ({ form, masterData }) => {
 };
 
 const Step3AnswerQuestions = ({ form, questionPage }) => {
-    const { control } = form;
+    const { control, getValues, setValue } = form;
     const { fields } = useFieldArray({ control, name: "questions" });
+    const [isGenerating, setIsGenerating] = useState(false);
+
     const questionsPerPage = 2;
+    const pageCount = Math.ceil(fields.length / questionsPerPage);
     const currentQuestions = fields.slice(questionPage * questionsPerPage, (questionPage + 1) * questionsPerPage);
+
+    const handleGenerateAI = async () => {
+        setIsGenerating(true);
+        toast.info("Generating AI insights, this may take a moment...");
+        const { clientId, dateRange, includedWasteTypeIds, questions } = getValues();
+        try {
+            const response = await api.post('/reports/generate-insights', {
+                clientId,
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+                includedWasteTypeIds,
+                questions: questions.map(q => ({ id: q.id, text: q.text })),
+            });
+
+            response.data.questions.forEach((answeredQuestion) => {
+                const questionIndex = questions.findIndex(q => q.id === answeredQuestion.id);
+                if (questionIndex !== -1) {
+                    setValue(`questions.${questionIndex}.answerText`, answeredQuestion.answerText);
+                }
+            });
+
+            toast.success("AI insights generated successfully!");
+        } catch (error) {
+            console.error("Error generating AI insights:", error);
+            toast.error("Failed to generate AI insights.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleSkip = () => {
+        fields.forEach((_, index) => { setValue(`questions.${index}.answerText`, "N/A"); });
+        // The main navigation will move to Step 4
+    };
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex-1 space-y-6">
+            {/* AI Generation / Skip Section */}
+            <div
+                className="p-6 rounded-2xl bg-white border border-[#00C853]/30 
+    shadow-[0_6px_20px_rgba(0,0,0,0.05)] mb-6 
+    flex flex-col sm:flex-row items-center justify-between gap-5 
+    transition-all duration-300 hover:shadow-[0_10px_25px_rgba(52,168,83,0.15)] hover:-translate-y-[2px]"
+            >
+                {/* Info Section */}
+                <div className="flex items-center gap-3 flex-1">
+                    <div className="p-2 rounded-xl bg-white border border-[#34A853]/20">
+                        <Sparkles className="h-5 w-5 text-[#00C853]" />
+                    </div>
+                    <div>
+                        <p
+                            className="font-semibold tracking-tight text-transparent bg-clip-text 
+                bg-gradient-to-r from-[#007E33] via-[#00C853] to-[#00E676]"
+                        >
+                            AI Assistance Available
+                        </p>
+                        <p className="text-sm text-gray-700 leading-snug">
+                            Fill in your answers manually, or let our{" "}
+                            <span
+                                className="font-medium text-transparent bg-clip-text 
+                    bg-gradient-to-r from-[#007E33] via-[#00C853] to-[#00E676]"
+                            >
+                                AI generate insights
+                            </span>{" "}
+                            for you.
+                        </p>
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 flex-shrink-0">
+                    {/* Glass Skip Button */}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSkip}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white backdrop-blur-md border border-[#00C853]/30 text-gray hover:bg-green hover:border-[#00E676]/50 
+                        hover:scale-[1.03] transition-all duration-300 shadow-sm"
+                    >
+                        <X className="h-4 w-4" /> Skip Section
+                    </Button>
+
+                    {/* Gradient Generate Button */}
+                    <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleGenerateAI}
+                        disabled={isGenerating}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                    >
+                        {isGenerating ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-white" />
+                        ) : (
+                            <Sparkles className="h-4 w-4 text-white" />
+                        )}
+                        <span>Generate with AI</span>
+                    </Button>
+                </div>
+            </div>
+
+            {/* Questions */}
+            <div className="flex-1 space-y-6 overflow-y-auto">
                 {currentQuestions.map((field, index) => {
                     const overallIndex = questionPage * questionsPerPage + index;
                     return (
-                        <FormField
-                            key={field.id}
-                            control={control}
-                            name={`questions.${overallIndex}.answerText`}
-                            render={({ field: formField }) => (
-                                <FormItem>
-                                    <FormLabel>{`Question ${overallIndex + 1}: ${field.text}`}</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Provide a detailed answer..." className="min-h-[120px]" {...formField} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        <FormField key={field.id} control={control} name={`questions.${overallIndex}.answerText`} render={({ field: formField }) => (
+                            <FormItem>
+                                <FormLabel>{`Question ${overallIndex + 1}: ${field.text}`}</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="Provide a detailed answer..." className="min-h-[120px]" {...formField} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
                     );
                 })}
             </div>
@@ -438,12 +535,18 @@ const GenerateReportPage = () => {
                         <div className="flex items-center gap-2">
                             <Link to="/app/reports"><Button type="button" variant="ghost">Cancel</Button></Link>
                             {step < STEPS.length && (
-                                <Button type="button" onClick={handleNext} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+                                <Button
+                                    type="button"
+                                    onClick={handleNext}
+                                    className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                                >
                                     {step === 3 && questionPage < questionPageCount - 1 ? 'Next Questions' : 'Next'}
                                 </Button>
                             )}
                             {step === STEPS.length && (
-                                <Button type="submit" disabled={isLoading} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Generate Report</Button>
+                                <Button type="submit" disabled={isLoading} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Generate Report
+                                </Button>
                             )}
                         </div>
                     </div>

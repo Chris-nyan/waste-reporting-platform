@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import html2canvas from 'html2canvas';
 
+
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
 const ReportPreviewPage = () => {
@@ -18,7 +19,7 @@ const ReportPreviewPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     // Updated to handle all chart images
     const [chartImages, setChartImages] = useState({ bar: null, emissionsPie: null, compositionPie: null, monthlyTrend: null });
-    
+
     // Refs for all four charts
     const barChartRef = useRef(null);
     const emissionsPieChartRef = useRef(null);
@@ -57,7 +58,7 @@ const ReportPreviewPage = () => {
             }, 500);
         }
     }, [report]);
-    
+
     // --- Data processing functions for charts ---
     const getCompositionData = () => {
         if (!report || !report.wasteData) return [];
@@ -153,7 +154,8 @@ const ReportPreviewPage = () => {
                     fileName={`Report-${report.client.companyName}-${new Date().toISOString().split('T')[0]}.pdf`}
                 >
                     {({ loading }) => (
-                        <Button disabled={loading || !chartImages.monthlyTrend}>
+                        <Button disabled={loading || !chartImages.monthlyTrend} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200"
+                        >
                             {loading || !chartImages.monthlyTrend ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                             Download PDF
                         </Button>

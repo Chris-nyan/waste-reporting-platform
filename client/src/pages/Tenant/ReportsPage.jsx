@@ -265,6 +265,7 @@ const ReportsPage = () => {
           )}
         </CardContent>
       </Card>
+      
     </div>
   );
 };

@@ -33,7 +33,14 @@ const AddUserDialog = ({ onUserAdded }) => {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-sm hover:shadow-lg">
+                <Button
+                    className={cn(
+                        "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-sm hover:shadow-lg",
+                        users.length >= 5 && "opacity-50 cursor-not-allowed hover:shadow-sm"
+                    )}
+                    disabled={users.length >= 5} // disable if 5 or more users
+                    title={users.length >= 5 ? "User limit reached (5 users max)" : ""}
+                >
                     <PlusCircle className="mr-2 h-4 w-4" /> Add New User
                 </Button>
             </DialogTrigger>
@@ -48,16 +55,16 @@ const AddUserDialog = ({ onUserAdded }) => {
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                         <FormField control={form.control} name="name" render={({ field }) => (
                             <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
+                        )} />
                         <FormField control={form.control} name="email" render={({ field }) => (
                             <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
+                        )} />
                         <FormField control={form.control} name="password" render={({ field }) => (
                             <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Min. 8 characters" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
+                        )} />
                         <FormField control={form.control} name="confirmPassword" render={({ field }) => (
                             <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" placeholder="Re-type password" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
+                        )} />
                         <FormField control={form.control} name="role" render={({ field }) => (
                             <FormItem><FormLabel>Role</FormLabel><Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
@@ -66,11 +73,11 @@ const AddUserDialog = ({ onUserAdded }) => {
                                     <SelectItem value="ADMIN">Admin</SelectItem>
                                 </SelectContent>
                             </Select><FormMessage /></FormItem>
-                        )}/>
+                        )} />
                         <DialogFooter className="pt-4">
                             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
                             <Button type="submit" disabled={form.formState.isSubmitting} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200">
-                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Create User
                             </Button>
                         </DialogFooter>

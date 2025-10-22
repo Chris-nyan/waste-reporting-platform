@@ -50,10 +50,10 @@ const EditUserDialog = ({ user, isOpen, onOpenChange, onUserUpdated }) => {
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                         <FormField control={form.control} name="name" render={({ field }) => (
                             <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
+                        )} />
                         <FormField control={form.control} name="email" render={({ field }) => (
                             <FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
+                        )} />
                         <FormField control={form.control} name="role" render={({ field }) => (
                             <FormItem><FormLabel>Role</FormLabel><Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
@@ -62,11 +62,12 @@ const EditUserDialog = ({ user, isOpen, onOpenChange, onUserUpdated }) => {
                                     <SelectItem value="ADMIN">Admin</SelectItem>
                                 </SelectContent>
                             </Select><FormMessage /></FormItem>
-                        )}/>
+                        )} />
                         <DialogFooter className="pt-4">
                             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-                            <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                            <Button type="submit" disabled={form.formState.isSubmitting} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200"
+                            >
+                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Save Changes
                             </Button>
                         </DialogFooter>

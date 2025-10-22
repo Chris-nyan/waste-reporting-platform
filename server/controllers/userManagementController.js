@@ -39,34 +39,44 @@ const getTenantUsers = async (req, res) => {
     }
 };
 
-/**
- * @desc    Create a new user within the admin's tenant
- * @route   POST /api/users
- * @access  Admin
- */
 const createTenantUser = async (req, res) => {
     if (req.user.role !== 'ADMIN') {
         return res.status(403).json({ message: 'Forbidden: Admin access required.' });
     }
 
     const { name, email, password, role } = req.body;
-    
+
     if (!name || !email || !password || !role) {
         return res.status(400).json({ message: 'Name, email, password, and role are required.' });
     }
-    
-    // Admins can only create other ADMINs or MEMBERs
+
     if (role === 'SUPER_ADMIN') {
-         return res.status(403).json({ message: 'Cannot create a Super Admin.' });
+        return res.status(403).json({ message: 'Cannot create a Super Admin.' });
     }
+
     if (role !== 'ADMIN' && role !== 'MEMBER') {
         return res.status(400).json({ message: 'Invalid role. Must be ADMIN or MEMBER.' });
     }
 
     try {
+        // Check if email already exists
         const userExists = await prisma.user.findUnique({ where: { email } });
         if (userExists) {
             return res.status(400).json({ message: 'User with this email already exists.' });
+        }
+
+        // LIMIT USERS TO 5 PER TENANT
+        const tenantUsersCount = await prisma.user.count({
+            where: {
+                tenantId: req.user.tenantId,
+                role: {
+                    not: 'SUPER_ADMIN'
+                }
+            }
+        });
+
+        if (tenantUsersCount >= 5) {
+            return res.status(400).json({ message: 'Tenant user limit reached. Maximum 5 users allowed.' });
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -77,13 +87,14 @@ const createTenantUser = async (req, res) => {
                 name,
                 email,
                 password: hashedPassword,
-                role, // ADMIN or MEMBER
-                tenantId: req.user.tenantId, // Set to the admin's tenant
+                role,
+                tenantId: req.user.tenantId,
             },
-            select: { id: true, email: true, name: true, role: true, createdAt: true } // Return safe data
+            select: { id: true, email: true, name: true, role: true, createdAt: true }
         });
 
         res.status(201).json(newUser);
+
     } catch (error) {
         console.error("Error creating user:", error);
         res.status(500).json({ message: 'Internal server error' });
@@ -99,7 +110,7 @@ const updateTenantUser = async (req, res) => {
     if (req.user.role !== 'ADMIN') {
         return res.status(403).json({ message: 'Forbidden: Admin access required.' });
     }
-    
+
     const { id } = req.params;
     const { name, email, role } = req.body;
 
@@ -108,7 +119,7 @@ const updateTenantUser = async (req, res) => {
     }
 
     if (role === 'SUPER_ADMIN') {
-         return res.status(403).json({ message: 'Cannot promote to Super Admin.' });
+        return res.status(403).json({ message: 'Cannot promote to Super Admin.' });
     }
 
     try {
@@ -144,7 +155,7 @@ const deleteTenantUser = async (req, res) => {
     }
 
     const { id } = req.params;
-    
+
     if (id === req.user.userId) {
         return res.status(400).json({ message: "You cannot delete your own account." });
     }

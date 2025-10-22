@@ -88,11 +88,21 @@ const AppLayout = () => {
                 </button>
             </div>
             <nav className="flex-1 p-2 space-y-1">
-                {navLinks.map((link) => (
-                    <SidebarNavLink key={link.to} to={link.to} icon={link.icon} isCollapsed={isCollapsed}>
-                        {link.label}
-                    </SidebarNavLink>
-                ))}
+                {navLinks.map((link) => {
+                    // Skip User Management if not admin
+                    if (link.label === 'User Management' && user?.role !== 'ADMIN') return null;
+
+                    return (
+                        <SidebarNavLink
+                            key={link.to}
+                            to={link.to}
+                            icon={link.icon}
+                            isCollapsed={isCollapsed}
+                        >
+                            {link.label}
+                        </SidebarNavLink>
+                    );
+                })}
             </nav>
             <div className="p-4 mt-auto border-t">
                 <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>

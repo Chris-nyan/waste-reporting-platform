@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, PlusCircle } from 'lucide-react';
 import { userFormSchema } from '@/schemas/userSchemas';
 import api from '@/lib/api';
+import { cn } from '@/lib/utils';
 
-const AddUserDialog = ({ onUserAdded }) => {
+const AddUserDialog = ({ users, onUserAdded }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const disableAddUser = users.length >= 5;
     const form = useForm({
         resolver: zodResolver(userFormSchema),
         defaultValues: { name: '', email: '', password: '', confirmPassword: '', role: 'MEMBER' },
@@ -34,12 +36,11 @@ const AddUserDialog = ({ onUserAdded }) => {
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button
+                    disabled={disableAddUser}
                     className={cn(
                         "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-sm hover:shadow-lg",
-                        users.length >= 5 && "opacity-50 cursor-not-allowed hover:shadow-sm"
+                        disableAddUser && "opacity-50 cursor-not-allowed hover:shadow-sm"
                     )}
-                    disabled={users.length >= 5} // disable if 5 or more users
-                    title={users.length >= 5 ? "User limit reached (5 users max)" : ""}
                 >
                     <PlusCircle className="mr-2 h-4 w-4" /> Add New User
                 </Button>

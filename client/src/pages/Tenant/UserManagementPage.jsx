@@ -18,7 +18,13 @@ const UserManagementPage = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const { currentUser } = useAuth();
+    const { user } = useAuth();
+    const { user: currentUser } = useAuth();
+    useEffect(() => {
+        if (!loading && user) {
+            console.log("Current logged-in user:", user);
+        }
+    }, [loading, user]);
 
     const [userToEdit, setUserToEdit] = useState(null);
     const [userToDelete, setUserToDelete] = useState(null);
@@ -64,7 +70,7 @@ const UserManagementPage = () => {
                     <h2 className="text-3xl font-bold tracking-tight text-gray-800 [text-shadow:1px_1px_1px_rgba(0,0,0,0.05)]">User Management</h2>
                     <p className="text-gray-500">Add, edit, or remove users for your tenant.</p>
                 </div>
-                <AddUserDialog onUserAdded={fetchUsers} />
+                <AddUserDialog users={users} onUserAdded={fetchUsers} />
             </div>
 
             <Card className="bg-white/70 backdrop-blur-lg border border-gray-200/50 shadow-sm rounded-xl">
@@ -124,16 +130,13 @@ const UserManagementPage = () => {
                                                             {/* Delete Option - Only Admins Can Delete Others */}
                                                             <DropdownMenuItem
                                                                 onSelect={() => {
-                                                                    // Allow deletion only if current user is admin and not deleting self
-                                                                    if (currentUser?.role === "ADMIN" && currentUser?.id !== user.id) {
+                                                                    // Only allow deletion if logged-in user is ADMIN and not deleting self
+                                                                    if (currentUser?.role === "ADMIN" && currentUser?.userId !== user.id) {
                                                                         setUserToDelete(user);
                                                                     }
                                                                 }}
-                                                                disabled={
-                                                                    // Disable if not admin OR trying to delete self
-                                                                    currentUser?.role !== "ADMIN" || currentUser?.id === user.id
-                                                                }
-                                                                className={`${currentUser?.role === "ADMIN" && currentUser?.id !== user.id
+                                                                disabled={currentUser?.role !== "ADMIN" || currentUser?.userId === user.id}
+                                                                className={`${currentUser?.role === "ADMIN" && currentUser?.userId !== user.id
                                                                         ? "text-red-600 focus:text-white focus:bg-red-500 cursor-pointer"
                                                                         : "text-gray-400 cursor-not-allowed"
                                                                     }`}

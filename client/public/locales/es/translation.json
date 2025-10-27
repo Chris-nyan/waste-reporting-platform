@@ -1,0 +1,16 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "clients": "Clientela",
+    "reports": "Informes",
+    "users": "Gestión de usuarios",
+    "settings": "Ajustes",
+    "tenants": "Inquilinos"
+  },
+  "user_menu": {
+    "my_account": "Mi cuenta",
+    "settings": "Ajustes",
+    "support": "Apoyo",
+    "logout": "Cerrar sesión"
+  }
+}

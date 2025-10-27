@@ -12,11 +12,15 @@ import ReportPDFDocument from '@/components/reports/ReportPDFDocument';
 import { toast } from 'react-toastify';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import html2canvas from 'html2canvas';
+import { useTranslation } from 'react-i18next';
+
 
 // Helper to generate distinct colors for the pie charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
 const ReportsPage = () => {
+  const { t } = useTranslation();
+
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,7 +44,7 @@ const ReportsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchReports();
@@ -110,7 +114,7 @@ const ReportsPage = () => {
 
       captureCharts();
     }
-  }, [reportForChartGen]);
+  }, [reportForChartGen, t]);
 
   // Fetches full report data and sets it to trigger the useEffect above
   const handleDownload = async (reportId) => {
@@ -119,7 +123,7 @@ const ReportsPage = () => {
       const fullReportResponse = await api.get(`/reports/${reportId}`);
       setReportForChartGen(fullReportResponse.data);
     } catch (err) {
-      toast.error("Failed to fetch report data for download.");
+      toast.error(t('reports.toast_fetch_error', 'Failed to fetch report data for download.'));
       setDownloadingId(null);
     }
   };
@@ -165,8 +169,16 @@ const ReportsPage = () => {
           {/* 1. Bar Chart */}
           <div ref={barChartRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
             <ResponsiveContainer>
-              <BarChart data={[{ name: 'Emissions (kg CO2e)', Avoided: reportForChartGen.emissionsAvoided, Logistics: reportForChartGen.logisticsEmissions, Recycling: reportForChartGen.recyclingEmissions }]}>
-                <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Legend /><Bar dataKey="Avoided" fill="#4ade80" /><Bar dataKey="Logistics" fill="#f87171" /><Bar dataKey="Recycling" fill="#fb923c" />
+              <BarChart data={[{
+                name: t('reports.charts.emissions_label', 'Emissions (kg CO2e)'),
+                [t('reports.charts.emissions_avoided', 'Avoided')]: reportForChartGen.emissionsAvoided,
+                [t('reports.charts.emissions_logistics', 'Logistics')]: reportForChartGen.logisticsEmissions,
+                [t('reports.charts.emissions_recycling', 'Recycling')]: reportForChartGen.recyclingEmissions
+              }]}>
+                <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Legend />
+                <Bar dataKey={t('reports.charts.emissions_avoided', 'Avoided')} fill="#4ade80" />
+                <Bar dataKey={t('reports.charts.emissions_logistics', 'Logistics')} fill="#f87171" />
+                <Bar dataKey={t('reports.charts.emissions_recycling', 'Recycling')} fill="#fb923c" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -174,7 +186,10 @@ const ReportsPage = () => {
           <div ref={emissionsPieChartRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={[{ name: 'Logistics Emissions', value: reportForChartGen.logisticsEmissions }, { name: 'Recycling Emissions', value: reportForChartGen.recyclingEmissions }]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} label>
+                <Pie data={[
+                  { name: t('reports.charts.logistics_emissions', 'Logistics Emissions'), value: reportForChartGen.logisticsEmissions },
+                  { name: t('reports.charts.recycling_emissions', 'Recycling Emissions'), value: reportForChartGen.recyclingEmissions }
+                ]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} label>
                   <Cell key="cell-0" fill="#f87171" /><Cell key="cell-1" fill="#fb923c" />
                 </Pie><Tooltip formatter={(value) => `${value.toFixed(2)} kg`} /><Legend />
               </PieChart>
@@ -198,10 +213,10 @@ const ReportsPage = () => {
               <LineChart data={getMonthlyTrendData()} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
-                <YAxis label={{ value: 'Quantity (kg)', angle: -90, position: 'insideLeft' }} />
+                <YAxis label={{ value: t('reports.charts.quantity_kg', 'Quantity (kg)'), angle: -90, position: 'insideLeft' }} />
                 <Tooltip formatter={(value) => `${value.toFixed(2)} kg`} />
                 <Legend />
-                <Line type="monotone" dataKey="quantity" stroke="#00796b" strokeWidth={2} activeDot={{ r: 8 }} />
+                <Line type="monotone" dataKey="quantity" name={t('reports.charts.quantity_kg', 'Quantity (kg)')} stroke="#00796b" strokeWidth={2} activeDot={{ r: 8 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -211,12 +226,12 @@ const ReportsPage = () => {
       {/* --- Visible Page Content --- */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-800">Reports</h2>
-          <p className="text-gray-500">View and manage all your generated sustainability reports.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-800">{t('reports.title', 'Reports')}</h2>
+          <p className="text-gray-500">{t('reports.description', 'View and manage all your generated sustainability reports.')}</p>
         </div>
         <Button asChild className="bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200">
           <Link to="/app/reports/generate">
-            <PlusCircle className="mr-2 h-4 w-4" /> Generate New Report
+            <PlusCircle className="mr-2 h-4 w-4" /> {t('reports.button_generate', 'Generate New Report')}
           </Link>
         </Button>
       </div>
@@ -232,11 +247,11 @@ const ReportsPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="border-gray-200 bg-gray-50">
-                    <TableHead>Report Title</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead>Generated On</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t('reports.table_col_title', 'Report Title')}</TableHead>
+                    <TableHead>{t('reports.table_col_client', 'Client')}</TableHead>
+                    <TableHead>{t('reports.table_col_period', 'Period')}</TableHead>
+                    <TableHead>{t('reports.table_col_generated', 'Generated On')}</TableHead>
+                    <TableHead className="text-right">{t('reports.table_col_actions', 'Actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -248,16 +263,17 @@ const ReportsPage = () => {
                         <TableCell className="text-gray-600">{format(new Date(report.startDate), 'MMM d, yyyy')} - {format(new Date(report.endDate), 'MMM d, yyyy')}</TableCell>
                         <TableCell className="text-gray-600">{format(new Date(report.generatedAt), 'PPP')}</TableCell>
                         <TableCell className="text-right space-x-2">
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/app/reports/preview/${report.id}`)}><Eye className="mr-2 h-4 w-4" /> Preview</Button>
+                          <Button variant="ghost" size="sm" onClick={() => navigate(`/app/reports/preview/${report.id}`)}><Eye className="mr-2 h-4 w-4" /> {t('reports.button_preview', 'Preview')}</Button>
                           <Button variant="outline" size="sm" onClick={() => handleDownload(report.id)} disabled={downloadingId === report.id}>
                             {downloadingId === report.id ? (<Loader2 className="mr-2 h-4 w-4 animate-spin" />) : (<Download className="mr-2 h-4 w-4" />)}
-                            Download
+                            {t('reports.button_download', 'Download')}
                           </Button>
+
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
-                    <TableRow><TableCell colSpan="5" className="h-48 text-center text-gray-500">No reports have been generated yet.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan="5" className="h-48 text-center text-gray-500">{t('reports.table_no_reports', 'No reports have been generated yet.')}</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -265,7 +281,7 @@ const ReportsPage = () => {
           )}
         </CardContent>
       </Card>
-      
+
     </div>
   );
 };

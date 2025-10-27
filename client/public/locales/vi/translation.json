@@ -1,0 +1,60 @@
+{
+  "nav": {
+    "dashboard": "Bảng điều khiển",
+    "clients": "Khách hàng",
+    "reports": "Báo cáo",
+    "users": "Quản lý người dùng",
+    "settings": "Cài đặt",
+    "tenants": "Người thuê nhà"
+  },
+  "user_menu": {
+    "my_account": "Tài khoản của tôi",
+    "settings": "Cài đặt",
+    "support": "Ủng hộ",
+    "logout": "Đăng xuất"
+  },
+  "dashboard": {
+    "title": "Bảng điều khiển",
+    "welcome": "Chào mừng trở lại, {{name}}! Dưới đây là tổng quan về tác động của bạn.",
+    "default_user": "Người dùng",
+    "error_fetch": "Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau.",
+    "timeframe": {
+      "select": "Chọn khung thời gian",
+      "days_30": "30 ngày qua",
+      "months_3": "3 tháng qua",
+      "months_6": "6 tháng qua",
+      "year_1": "Năm ngoái",
+      "all": "Mọi thời đại",
+      "custom": "Phạm vi tùy chỉnh",
+      "start_date": "Ngày bắt đầu",
+      "end_date": "Ngày kết thúc"
+    },
+    "kpis": {
+      "clients": "Tổng số khách hàng",
+      "entries": "Mục nhập chất thải",
+      "recycled": "Tổng số tái chế (kg)",
+      "reports": "Báo cáo được tạo",
+      "emissions": "Lượng khí thải tránh được (kg CO2e)"
+    },
+    "charts": {
+      "leaderboard_title": "Bảng xếp hạng khách hàng",
+      "leaderboard_desc": "Khách hàng hàng đầu theo khối lượng tái chế trong giai đoạn này.",
+      "leaderboard_col_client": "Tên khách hàng",
+      "leaderboard_col_reports": "Báo cáo được tạo",
+      "leaderboard_col_total": "Tổng cộng (kg)",
+      "composition_title": "Thành phần chất thải của các khách hàng hàng đầu",
+      "composition_desc": "Phân tích các loại chất thải cho những khách hàng tích cực nhất của bạn.",
+      "pickup_trend_title": "Xu hướng đón hàng tháng",
+      "pickup_trend_desc": "Tổng trọng lượng thu thập theo tháng (tính theo ngày lấy hàng).",
+      "pickup_trend_legend": "Thu thập (kg)",
+      "emissions_title": "Lượng khí thải tránh được nhờ vật liệu",
+      "emissions_desc": "Tác động môi trường dựa trên loại vật liệu (kg CO2e).",
+      "emissions_legend": "Lượng khí thải (kg CO2e)",
+      "category_title": "Chất thải theo danh mục",
+      "category_desc": "Phân tích chi tiết tất cả chất thải đã được xử lý.",
+      "facility_title": "Tái chế theo Cơ sở",
+      "facility_desc": "Tổng khối lượng xử lý tại mỗi cơ sở (kg).",
+      "facility_legend": "Cân nặng (kg)"
+    }
+  }
+}

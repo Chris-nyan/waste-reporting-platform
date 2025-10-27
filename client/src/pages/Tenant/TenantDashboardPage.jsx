@@ -13,6 +13,7 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import useAuth from '../../hooks/use-auth';
 import api from '../../lib/api';
+import { useTranslation } from 'react-i18next';
 
 // --- Reusable Components ---
 const StatCard = ({ title, value, icon: Icon, loading }) => (
@@ -39,6 +40,7 @@ const CHART_COLORS = [
 // --- Main Dashboard Component ---
 const TenantDashboardPage = () => {
     const { user } = useAuth();
+    const { t } = useTranslation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -68,7 +70,7 @@ const TenantDashboardPage = () => {
         };
 
         fetchDashboardData();
-    }, [timeframe, customRange]);
+    }, [timeframe, customRange, t]);
 
 
     if (error) return <div className="p-4 lg:p-6 text-red-600 bg-red-50 rounded-md m-4">{error}</div>;
@@ -77,21 +79,23 @@ const TenantDashboardPage = () => {
         <div className="flex-1 space-y-6 p-4 lg:p-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-800">Dashboard</h2>
-                    <p className="text-gray-500">Welcome back, {user?.name || 'User'}! Here's your impact overview.</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-800">{t('dashboard.title', 'Dashboard')}</h2>
+                    <p className="text-gray-500">{t('dashboard.welcome', 'Welcome back, {{name}}! Here\'s your impact overview.', {
+                        name: user?.name || t('dashboard.default_user', 'User')
+                    })}</p>
                 </div>
                 <div className="flex items-center space-x-2">
                     <Select value={timeframe} onValueChange={setTimeframe}>
                         <SelectTrigger className="w-[180px] shadow-sm bg-white">
-                            <SelectValue placeholder="Select timeframe" />
+                            <SelectValue placeholder={t('dashboard.timeframe.select', 'Select timeframe')} />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="30d">Last 30 Days</SelectItem>
-                            <SelectItem value="3m">Last 3 Months</SelectItem>
-                            <SelectItem value="6m">Last 6 Months</SelectItem>
-                            <SelectItem value="1y">Last Year</SelectItem>
-                            <SelectItem value="all">All Time</SelectItem>
-                            <SelectItem value="custom">Custom Range</SelectItem>
+                            <SelectItem value="30d">{t('dashboard.timeframe.days_30', 'Last 30 Days')}</SelectItem>
+                            <SelectItem value="3m">{t('dashboard.timeframe.months_3', 'Last 3 Months')}</SelectItem>
+                            <SelectItem value="6m">{t('dashboard.timeframe.months_6', 'Last 6 Months')}</SelectItem>
+                            <SelectItem value="1y">{t('dashboard.timeframe.year_1', 'Last Year')}</SelectItem>
+                            <SelectItem value="all">{t('dashboard.timeframe.all', 'All Time')}</SelectItem>
+                            <SelectItem value="custom">{t('dashboard.timeframe.custom', 'Custom Range')}</SelectItem>
                         </SelectContent>
                     </Select>
 
@@ -104,7 +108,7 @@ const TenantDashboardPage = () => {
                                 selectsStart
                                 startDate={customRange.start}
                                 endDate={customRange.end}
-                                placeholderText="Start date"
+                                placeholderText={t('dashboard.timeframe.start_date', 'Start date')}
                                 className="border rounded-md p-2 text-sm"
                             />
                             <DatePicker
@@ -113,7 +117,7 @@ const TenantDashboardPage = () => {
                                 selectsEnd
                                 startDate={customRange.start}
                                 endDate={customRange.end}
-                                placeholderText="End date"
+                                placeholderText={t('dashboard.timeframe.end_date', 'End date')}
                                 className="border rounded-md p-2 text-sm"
                             />
                         </div>
@@ -123,13 +127,12 @@ const TenantDashboardPage = () => {
 
             {/* --- UPDATED KPI GRID --- */}
             <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
-                <StatCard title="Total Clients" value={data?.kpis?.totalClients ?? '0'} icon={Users} loading={loading} />
-                <StatCard title="Waste Entries" value={data?.kpis?.totalWasteEntries ?? '0'} icon={Recycle} loading={loading} />
-                <StatCard title="Total Recycled (kg)" value={data?.kpis?.totalRecycledWeight?.toLocaleString() ?? '0'} icon={Weight} loading={loading} />
-                <StatCard title="Reports Generated" value={data?.kpis?.totalReportsGenerated ?? '0'} icon={FileText} loading={loading} />
-                {/* --- NEW KPI CARD --- */}
+                <StatCard title={t('dashboard.kpis.clients', 'Total Clients')} value={data?.kpis?.totalClients ?? '0'} icon={Users} loading={loading} />
+                <StatCard title={t('dashboard.kpis.entries', 'Waste Entries')} value={data?.kpis?.totalWasteEntries ?? '0'} icon={Recycle} loading={loading} />
+                <StatCard title={t('dashboard.kpis.recycled', 'Total Recycled (kg)')} value={data?.kpis?.totalRecycledWeight?.toLocaleString() ?? '0'} icon={Weight} loading={loading} />
+                <StatCard title={t('dashboard.kpis.reports', 'Reports Generated')} value={data?.kpis?.totalReportsGenerated ?? '0'} icon={FileText} loading={loading} />
                 <StatCard
-                    title="Emissions Avoided (kg CO2e)"
+                    title={t('dashboard.kpis.emissions', 'Emissions Avoided (kg CO2e)')}
                     value={data?.kpis?.totalEmissionsAvoided?.toLocaleString() ?? '0'}
                     icon={Leaf}
                     loading={loading}
@@ -139,17 +142,17 @@ const TenantDashboardPage = () => {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <Card className="shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-gray-800">Client Leaderboard</CardTitle>
-                        <CardDescription>Top clients by recycled volume in the period.</CardDescription>
+                        <CardTitle className="text-gray-800">{t('dashboard.charts.leaderboard_title', 'Client Leaderboard')}</CardTitle>
+                        <CardDescription>{t('dashboard.charts.leaderboard_desc', 'Top clients by recycled volume in the period.')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Client Name</TableHead>
-                                        <TableHead>Reports Generated</TableHead>
-                                        <TableHead className="text-right">Total (kg)</TableHead>
+                                        <TableHead>{t('dashboard.charts.leaderboard_col_client', 'Client Name')}</TableHead>
+                                        <TableHead>{t('dashboard.charts.leaderboard_col_reports', 'Reports Generated')}</TableHead>
+                                        <TableHead className="text-right">{t('dashboard.charts.leaderboard_col_total', 'Total (kg)')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -168,8 +171,8 @@ const TenantDashboardPage = () => {
 
                 <Card className="shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-gray-800">Waste Composition by Top Clients</CardTitle>
-                        <CardDescription>Breakdown of waste types for your most active clients.</CardDescription>
+                        <CardTitle className="text-gray-800">{t('dashboard.charts.composition_title', 'Waste Composition by Top Clients')}</CardTitle>
+                        <CardDescription>{t('dashboard.charts.composition_desc', 'Breakdown of waste types for your most active clients.')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
@@ -197,8 +200,8 @@ const TenantDashboardPage = () => {
                 {/* --- NEW CHART 1: Monthly Pickup Trend (Line) --- */}
                 <Card className="shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-gray-800">Monthly Pickup Trend</CardTitle>
-                        <CardDescription>Total weight collected month-over-month (by pickup date).</CardDescription>
+                        <CardTitle className="text-gray-800">{t('dashboard.charts.pickup_trend_title', 'Monthly Pickup Trend')}</CardTitle>
+                        <CardDescription>{t('dashboard.charts.pickup_trend_desc', 'Total weight collected month-over-month (by pickup date).')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
@@ -213,7 +216,7 @@ const TenantDashboardPage = () => {
                                     />
                                     <YAxis tick={{ fontSize: 12 }} />
                                     <Tooltip content={<ChartTooltipContent />} />
-                                    <Line type="monotone" dataKey="value" name="Collected (kg)" stroke={CHART_COLORS[3]} strokeWidth={2} />
+                                    <Line type="monotone" dataKey="value" name={t('dashboard.charts.pickup_trend_legend', 'Collected (kg)')} stroke={CHART_COLORS[3]} strokeWidth={2} />
                                 </LineChart>
                             </ChartContainer>
                         )}
@@ -223,8 +226,8 @@ const TenantDashboardPage = () => {
                 {/* --- NEW CHART 2: Emissions Avoided (Bar) --- */}
                 <Card className="shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-gray-800">Emissions Avoided by Material</CardTitle>
-                        <CardDescription>Environmental impact based on material type (kg CO2e).</CardDescription>
+                        <CardTitle className="text-gray-800">{t('dashboard.charts.emissions_title', 'Emissions Avoided by Material')}</CardTitle>
+                        <CardDescription>{t('dashboard.charts.emissions_desc', 'Environmental impact based on material type (kg CO2e).')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
@@ -234,7 +237,7 @@ const TenantDashboardPage = () => {
                                     <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                                     <YAxis tick={{ fontSize: 12 }} />
                                     <Tooltip content={<ChartTooltipContent />} />
-                                    <Bar dataKey="value" name="Emissions (kg CO2e)" fill={CHART_COLORS[1]} />
+                                    <Bar dataKey="value" name={t('dashboard.charts.emissions_legend', 'Emissions (kg CO2e)')} fill={CHART_COLORS[1]} />
                                 </BarChart>
                             </ChartContainer>
                         )}
@@ -244,8 +247,8 @@ const TenantDashboardPage = () => {
                 {/* --- NEW CHART 3: Waste by Category (Pie) --- */}
                 <Card className="shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-gray-800">Waste by Category</CardTitle>
-                        <CardDescription>High-level breakdown of all waste processed.</CardDescription>
+                        <CardTitle className="text-gray-800">{t('dashboard.charts.category_title', 'Waste by Category')}</CardTitle>
+                        <CardDescription>{t('dashboard.charts.category_desc', 'High-level breakdown of all waste processed.')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
@@ -275,8 +278,8 @@ const TenantDashboardPage = () => {
                 {/* --- NEW CHART 4: Waste by Facility (Bar) --- */}
                 <Card className="shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-gray-800">Recycling by Facility</CardTitle>
-                        <CardDescription>Total volume processed at each facility (kg).</CardDescription>
+                        <CardTitle className="text-gray-800">{t('dashboard.charts.facility_title', 'Recycling by Facility')}</CardTitle>
+                        <CardDescription>{t('dashboard.charts.facility_desc', 'Total volume processed at each facility (kg).')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
@@ -286,7 +289,7 @@ const TenantDashboardPage = () => {
                                     <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                                     <YAxis tick={{ fontSize: 12 }} />
                                     <Tooltip content={<ChartTooltipContent />} />
-                                    <Bar dataKey="value" name="Weight (kg)" fill={CHART_COLORS[2]} />
+                                    <Bar dataKey="value" name={t('dashboard.charts.facility_legend', 'Weight (kg)')} fill={CHART_COLORS[2]} />
                                 </BarChart>
                             </ChartContainer>
                         )}

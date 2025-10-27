@@ -23,20 +23,23 @@ import {
 } from 'lucide-react';
 import useAuth from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next'; // <-- 1. IMPORT HOOK
+import LanguageSwitcher from '@/components/layout/LanguageSwifter' // <-- 2. IMPORT SWITCHER
 
-const tenantNavLinks = [
-    { to: '/app/dashboard', icon: Home, label: 'Dashboard' },
-    { to: '/app/clients', icon: Users, label: 'Clients' },
-    { to: '/app/reports', icon: LineChart, label: 'Reports' },
-    { to: '/app/user-management', icon: Users, label: 'User Management' },
-    { to: '/app/settings', icon: CircleUser, label: 'Settings' },
+// const tenantNavLinks = [
+//     { to: '/app/dashboard', icon: Home, label: 'Dashboard' },
+//     { to: '/app/clients', icon: Users, label: 'Clients' },
+//     { to: '/app/reports', icon: LineChart, label: 'Reports' },
+//     { to: '/app/user-management', icon: Users, label: 'User Management' },
+//     { to: '/app/settings', icon: CircleUser, label: 'Settings' },
 
-];
+// ];
 
-const superAdminNavLinks = [
-    { to: '/superadmin/dashboard', icon: Home, label: 'Dashboard' },
-    { to: '/superadmin/tenants', icon: Building, label: 'Tenants' },
-];
+// const superAdminNavLinks = [
+//     { to: '/superadmin/dashboard', icon: Home, label: 'Dashboard' },
+//     { to: '/superadmin/tenants', icon: Building, label: 'Tenants' },
+// ];
+
 
 const SidebarNavLink = ({ to, icon: Icon, children, isCollapsed }) => {
     const { pathname } = useLocation();
@@ -69,6 +72,20 @@ const AppLayout = () => {
     const { user, logout } = useAuth();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+    const { t } = useTranslation();
+    const tenantNavLinks = [
+        { to: '/app/dashboard', icon: Home, label: t('nav.dashboard', 'Dashboard') },
+        { to: '/app/clients', icon: Users, label: t('nav.clients', 'Clients') },
+        { to: '/app/reports', icon: LineChart, label: t('nav.reports', 'Reports') },
+        { to: '/app/user-management', icon: Users, label: t('nav.users', 'User Management') },
+        { to: '/app/settings', icon: CircleUser, label: t('nav.settings', 'Settings') },
+
+    ];
+
+    const superAdminNavLinks = [
+        { to: '/superadmin/dashboard', icon: Home, label: t('nav.dashboard', 'Dashboard') },
+        { to: '/superadmin/tenants', icon: Building, label: t('nav.tenants', 'Tenants') },
+    ];
 
     const navLinks = user?.role === 'SUPER_ADMIN' ? superAdminNavLinks : tenantNavLinks;
 
@@ -121,12 +138,12 @@ const AppLayout = () => {
                             </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-56">
-                            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                            <DropdownMenuLabel>{t('user_menu.my_account', 'My Account')}</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild><Link to="/app/settings">Settings</Link></DropdownMenuItem>
-                            <DropdownMenuItem>Support</DropdownMenuItem>
+                            <DropdownMenuItem asChild><Link to="/app/settings">{t('user_menu.settings', 'Settings')}</Link></DropdownMenuItem>
+                            <DropdownMenuItem>{t('user_menu.support', 'Support')}</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+                            <DropdownMenuItem onClick={logout}>{t('user_menu.logout', 'Logout')}</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -159,7 +176,7 @@ const AppLayout = () => {
                     </button>
 
                     <div className="ml-auto">
-                        {/* Other header items like notifications or a search bar can go here */}
+                        <LanguageSwitcher />
                     </div>
                 </header>
                 <main className="flex-1 overflow-y-auto bg-white">

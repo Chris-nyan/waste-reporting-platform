@@ -13,6 +13,7 @@ const reportRoutes = require('./routes/reportRoutes.js');
 const settingsRoutes = require('./routes/settingsRoutes.js');
 const recyclingProcessRoutes = require('./routes/recyclingProcessRoutes.js');
 const userRoutes = require('./routes/userRoutes.js');
+const translationRoutes = require('./routes/translationRoutes.js');
 
 // Load environment variables
 dotenv.config();
@@ -40,6 +41,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/recycling-processes', recyclingProcessRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/translations', translationRoutes);
 
 
 

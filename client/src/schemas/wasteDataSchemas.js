@@ -9,8 +9,8 @@ export const wasteDataSchema = z.object({
   quantity: z.coerce.number().min(0.01, { message: "Quantity must be > 0." }),
   unit: z.enum(['KG', 'G', 'T', 'LB'], { required_error: "Unit is required." }),
 
-  recycledDate: z.coerce.date({ required_error: "A recycled date is required." }),
-  recyclingTechnologyId: z.coerce.string().optional(),
+//   recycledDate: z.coerce.date({ required_error: "A recycled date is required." }),
+//   recyclingTechnologyId: z.coerce.string().optional(),
 
   vehicleType: z.string().optional().or(z.literal("")),
   pickupAddress: z.string().optional().or(z.literal("")),
@@ -18,6 +18,6 @@ export const wasteDataSchema = z.object({
   distanceKm: z.coerce.number().optional(),
 
   wasteImages: z.any().optional(),
-  recyclingImages: z.any().optional(),
+//   recyclingImages: z.any().optional(),
 });
 

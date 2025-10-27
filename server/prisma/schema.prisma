@@ -49,6 +49,7 @@ model User {
   // A Super Admin will have a null tenantId
   tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tenantId  String?
+  isActive Boolean @default(true)
 
   createdClients   Client[]
   createdWasteData WasteData[]
@@ -108,7 +109,7 @@ model WasteData {
   wasteTypeId             String
   quantity                Float
   unit                    String
-  recycledDate            DateTime // This may represent the date of the FIRST or LAST recycling event
+  recycledDate            DateTime? // This may represent the date of the FIRST or LAST recycling event
   recyclingTechnology     RecyclingTechnology? @relation(fields: [recyclingTechnologyId], references: [id])
   recyclingTechnologyId   String?
   pickupLocation          PickupLocation?      @relation(fields: [pickupLocationId], references: [id])

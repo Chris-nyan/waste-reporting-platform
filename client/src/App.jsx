@@ -13,6 +13,7 @@ import ClientDetailPage from './pages/Tenant/ClientDetailsPage';
 import ReportsPage from './pages/Tenant/ReportsPage';
 import GenerateReportPage from './pages/Tenant/GenerateReportPage';
 import ReportPreviewPage from './pages/Tenant/ReportPreviewPage';
+import UserManagementPage from './pages/Tenant/UserManagementPage';
 import SettingsPage from './pages/Tenant/SettingsPage';
 import SuperAdminDashboardPage from './pages/SuperAdmin/SuperAdminDashboardPage';
 import AppLayout from './components/layout/AppLayout';
@@ -73,6 +74,7 @@ function App() {
             <Route path="/app/reports" element={<ReportsPage />} />
             <Route path="/app/reports/generate" element={<GenerateReportPage />} />
             <Route path="/app/reports/preview/:id" element={<ReportPreviewPage />} />
+            <Route path="/app/user-management" element={<UserManagementPage />} />
             <Route path="/app/settings" element={<SettingsPage />} />
 
 

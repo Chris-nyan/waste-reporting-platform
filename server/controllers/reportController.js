@@ -1,6 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const puppeteer = require('puppeteer');
+const { generateAiContent } = require('../services/aiService');
+const { format } = require('date-fns'); 
+
 
 /**
  * @desc    Get all generated reports for the tenant
@@ -41,7 +44,7 @@ const formatNumber = (num) => parseFloat(num.toFixed(2));
  */
 const generateReport = async (req, res) => {
     // --- LOG FOR DATA REPORT CHECKING---
-    console.log("--- RECEIVED REQUEST BODY ON BACKEND ---");
+    // console.log("--- RECEIVED REQUEST BODY ON BACKEND ---");
     // console.log(JSON.stringify(req.body, null, 2));
     // --------------------
     const {
@@ -307,6 +310,79 @@ const downloadReport = async (req, res) => {
         res.status(500).json({ message: 'Failed to generate PDF.' });
     }
 };
+/**
+ * @desc    Use AI to generate answers for the report's insight questions
+ * @route   POST /api/reports/generate-insights
+ * @access  Private
+ */
+const generateAIInsights = async (req, res) => {
+    const { clientId, startDate, endDate, includedWasteTypeIds, questions } = req.body;
+
+    if (!clientId || !startDate || !endDate || !questions?.length) {
+        return res.status(400).json({ message: 'Client, date range, and questions are required for AI insights.' });
+    }
+
+    try {
+        const [client, wasteEntries] = await Promise.all([
+            prisma.client.findUnique({ where: { id: clientId } }),
+            prisma.wasteData.findMany({
+                where: {
+                    clientId,
+                    pickupDate: { gte: new Date(startDate), lte: new Date(endDate) },
+                    ...(includedWasteTypeIds?.length > 0 && { wasteTypeId: { in: includedWasteTypeIds } }),
+                },
+                include: {
+                    wasteType: true,
+                    recyclingProcesses: {
+                        where: {
+                            recycledDate: { gte: new Date(startDate), lte: new Date(endDate) }
+                        }
+                    }
+                }
+            })
+        ]);
+
+        if (!client) return res.status(404).json({ message: 'Client not found.' });
+
+        const totalWeightRecycled = wasteEntries.flatMap(e => e.recyclingProcesses)
+            .reduce((sum, process) => sum + process.quantityRecycled, 0);
+
+        const prompt = `
+As a professional sustainability consultant, generate concise and insightful answers for a waste management report.
+
+Report Context:
+- Client: ${client.companyName}
+- Period: ${format(new Date(startDate), 'MMMM yyyy')} to ${format(new Date(endDate), 'MMMM yyyy')}
+- Total Recycled Weight: ${totalWeightRecycled.toFixed(2)} kg
+
+Questions:
+${questions.map((q, i) => `${i + 1}. ${q.text}`).join('\n')}
+
+Provide only the answers, separated by a newline character.
+        `;
+
+        let aiResponse;
+        try {
+            aiResponse = await generateAiContent(prompt);
+        } catch (err) {
+            console.error("AI generation failed:", err);
+            return res.status(500).json({ message: "AI service failed.", details: err.message });
+        }
+
+        const answers = aiResponse.split('\n').filter(ans => ans.trim() !== '');
+
+        const answeredQuestions = questions.map((q, index) => ({
+            ...q,
+            answerText: answers[index] || "AI could not generate an answer for this question.",
+        }));
+
+        res.json({ questions: answeredQuestions });
+
+    } catch (error) {
+        console.error("Error generating AI insights:", error);
+        res.status(500).json({ message: "Failed to generate AI insights." });
+    }
+};
 
 
 module.exports = {
@@ -316,5 +392,6 @@ module.exports = {
     getWasteTypesForPeriod,
     getReportById,
     downloadReport,
+    generateAIInsights,
 };
 

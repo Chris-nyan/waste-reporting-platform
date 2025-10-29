@@ -81,13 +81,12 @@ async function getDistanceKm(origin, destination) {
  * @access  Private
  */
 const createWasteEntry = async (req, res) => {
+  // 1. REMOVED recycledDate and recyclingTechnologyId from destructuring
   const {
     clientId,
     wasteTypeId,
     quantity,
     unit,
-    recycledDate,
-    recyclingTechnologyId,
     pickupLocationId,
     facilityId,
     vehicleTypeId,
@@ -108,22 +107,18 @@ const createWasteEntry = async (req, res) => {
       return res.status(404).json({ message: 'Client not found or you do not have permission.' });
     }
 
-    let imageUrls = [];
+    let imageUrl = [];
     if (req.files) {
-      const allFiles = [...(req.files['wasteImages'] || []), ...(req.files['recyclingImages'] || [])];
-      imageUrls = allFiles.map(file => `/uploads/${file.filename}`);
+      // 2. REMOVED 'recyclingImages' from file handling
+      const allFiles = [...(req.files['wasteImages'] || [])];
+      imageUrl = allFiles.map(file => `/uploads/${file.filename}`);
     }
 
     const initialQuantity = parseFloat(quantity);
+    
+    // 3. REMOVED all logic that checked for recycledDate
     let recycledQuantity = 0;
     let status = "PENDING_RECYCLING";
-
-    // If a recycledDate is provided on creation, it means some amount was recycled immediately.
-    // For this simplified add-on, we'll assume the full amount was recycled if a date is given.
-    if (recycledDate) {
-      recycledQuantity = initialQuantity;
-      status = "FULLY_RECYCLED";
-    }
 
     const newWasteEntry = await prisma.wasteData.create({
       data: {
@@ -138,27 +133,17 @@ const createWasteEntry = async (req, res) => {
         recycledQuantity: recycledQuantity,
         status: status,
 
-        // Legacy fields for initial entry details if provided
-        recycledDate: recycledDate ? new Date(recycledDate) : null,
-        recyclingTechnologyId: recyclingTechnologyId,
+        // --- 4. REMOVED recycledDate and recyclingTechnologyId ---
         pickupLocationId: pickupLocationId,
         facilityId: facilityId,
         vehicleTypeId: vehicleTypeId,
         distanceKm: distanceKm ? parseFloat(distanceKm) : null,
-        imageUrls, // Corrected from imageUrl to imageUrls
+        imageUrl,
       },
     });
 
-    // If an initial recycling event happened, create the first process record for it
-    if (recycledDate) {
-      await prisma.recyclingProcess.create({
-        data: {
-          wasteDataId: newWasteEntry.id,
-          quantityRecycled: recycledQuantity,
-          recycledDate: new Date(recycledDate)
-        }
-      });
-    }
+    // 5. REMOVED the entire block that created a RecyclingProcess
+    // (This logic will be handled by your new feature)
 
     res.status(201).json(newWasteEntry);
   } catch (error) {

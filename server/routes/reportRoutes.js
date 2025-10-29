@@ -6,7 +6,8 @@ const {
     getReportConfigData,
     getWasteTypesForPeriod,
     getReportById,
-    downloadReport
+    downloadReport,
+    generateAIInsights
 } = require('../controllers/reportController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -28,5 +29,6 @@ router.route('/:id/download').get(protect, downloadReport); // The download rout
 
 router.get('/:id', protect, getReportById);
 
+router.post('/generate-insights', protect, generateAIInsights);
 module.exports = router;
 

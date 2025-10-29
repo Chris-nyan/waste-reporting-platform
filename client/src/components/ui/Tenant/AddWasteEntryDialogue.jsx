@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { PlusCircle, Loader2, CheckCircle, Repeat, UploadCloud, Route, X, CalendarIcon, Info, FileUp, ListPlus, DownloadCloud, File as FileIcon } from 'lucide-react';
+import { PlusCircle, Loader2, CheckCircle, Repeat, UploadCloud, Route, X, CalendarIcon, Info, FileUp, ListPlus, DownloadCloud, File as FileIcon, Warehouse, Factory } from 'lucide-react';
 import { wasteDataSchema } from '@/schemas/wasteDataSchemas';
 import api from '@/lib/api';
 import Papa from 'papaparse';
@@ -20,7 +20,8 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 // Steps and data constants
-const STEPS = [{ id: 1, title: 'Waste Details' }, { id: 2, title: 'Recycling & Logistics' }, { id: 3, title: 'Upload Images' }, { id: 4, title: 'Review & Submit' }];
+// MODIFIED: Step 2 title
+const STEPS = [{ id: 1, title: 'Waste Details' }, { id: 2, title: 'Logistics' }, { id: 3, title: 'Upload Images' }, { id: 4, title: 'Review & Submit' }];
 
 // ========================== Step Components ==========================
 const FormLabelWithInfo = ({ children, description }) => (<div className="flex items-center gap-2"><FormLabel>{children}</FormLabel><Popover><PopoverTrigger asChild><Info className="h-4 w-4 text-gray-400 cursor-pointer" /></PopoverTrigger><PopoverContent className="w-64 text-sm">{description}</PopoverContent></Popover></div>);
@@ -180,17 +181,33 @@ const Step1WasteDetails = ({ control, form, masterData }) => {
   );
 };
 
-const Step2RecyclingLogistics = ({ control, form, masterData }) => {
+// ========================== MODIFIED STEP 2 ==========================
+// ========================== MODIFIED STEP 2 ==========================
+const Step2Logistics = ({ control, form, masterData }) => {
   const [calculating, setCalculating] = useState(false);
+
+  // This is your function, now updated to work with dropdown IDs
   const handleCalculateDistance = async () => {
-    const origin = form.getValues("pickupAddress");
-    const destination = form.getValues("facilityAddress");
+    // 1. Get the IDs from the form
+    const pickupLocationId = form.getValues("pickupLocationId");
+    const facilityId = form.getValues("facilityId");
+
+    // 2. Find the full objects (including addresses) from masterData
+    const originLoc = masterData.pickupLocations.find(loc => loc.id === pickupLocationId);
+    const destinationLoc = masterData.facilities.find(fac => fac.id === facilityId);
+
+    // 3. Get the address strings
+    const origin = originLoc?.fullAddress;
+    const destination = destinationLoc?.fullAddress;
+
     if (!origin || !destination) {
-      toast.error("Please enter both addresses to calculate distance.");
+      toast.error("Please select a location and facility. (Ensure both have a saved address to calculate distance).");
       return;
     }
+
     setCalculating(true);
     try {
+      // 4. Call your API endpoint with the addresses
       const response = await api.post('/logistics/calculate-distance', { origin, destination });
       const { distanceKm } = response.data;
       form.setValue("distanceKm", distanceKm, { shouldValidate: true });
@@ -201,25 +218,130 @@ const Step2RecyclingLogistics = ({ control, form, masterData }) => {
       setCalculating(false);
     }
   };
+
   return (
     <div className="space-y-4">
-      <FormField control={control} name="recycledDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabelWithInfo description="The date material was processed.">Date Recycled</FormLabelWithInfo><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
-      <FormField control={control} name="recyclingTechnologyId" render={({ field }) => (
-        <FormItem><FormLabelWithInfo description="The method used to recycle.">Recycling Technology</FormLabelWithInfo><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a technology" /></SelectTrigger></FormControl><SelectContent>{masterData?.recyclingTechnologies?.map(tech => <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
-      )} />
-      <FormField control={control} name="vehicleType" render={({ field }) => (<FormItem><FormLabelWithInfo description="The vehicle for transport.">Vehicle Type</FormLabelWithInfo><FormControl><Input placeholder="e.g. Truck, Pickup" {...field} /></FormControl><FormMessage /></FormItem>)} />
+      {/* Vehicle Field */}
+      <FormField
+        control={control}
+        name="vehicleTypeId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabelWithInfo description="The vehicle used for transport.">
+              Vehicle
+            </FormLabelWithInfo>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a vehicle" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {masterData?.vehicleTypes?.map(vehicle => (
+                  <SelectItem key={vehicle.id} value={vehicle.id}>{vehicle.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Logistics & Distance Section */}
       <div className="space-y-2 p-4 border rounded-lg bg-gray-50/50">
-        <h4 className="font-medium">Distance Calculation <span className="text-gray-400 text-sm">(Optional)</span></h4>
-        <FormField control={control} name="pickupAddress" render={({ field }) => (<FormItem><FormLabel>Pickup Address</FormLabel><FormControl><Input placeholder="Enter start address" {...field} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={control} name="facilityAddress" render={({ field }) => (<FormItem><FormLabel>Recycling Facility Address</FormLabel><FormControl><Input placeholder="Enter end address" {...field} /></FormControl><FormMessage /></FormItem>)} />
+        <h4 className="font-medium">Logistics & Distance <span className="text-gray-400 text-sm">(Optional)</span></h4>
+
+        {/* Pickup Location Dropdown */}
+        <FormField
+          control={control}
+          name="pickupLocationId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Pickup Location</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <Warehouse className="mr-2 h-4 w-4 opacity-50" />
+                    <SelectValue placeholder="Select pickup location" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {masterData?.pickupLocations?.map(loc => (
+                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Facility Dropdown */}
+        <FormField
+          control={control}
+          name="facilityId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Facility</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <Factory className="mr-2 h-4 w-4 opacity-50" />
+                    <SelectValue placeholder="Select facility" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {masterData?.facilities?.map(fac => (
+                    <SelectItem key={fac.id} value={fac.id}>{fac.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="flex items-end gap-4">
-          <Button type="button" variant="outline" onClick={handleCalculateDistance} disabled={calculating} className="mt-2">{calculating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />} Calculate</Button>
-          <FormField control={control} name="distanceKm" render={({ field }) => (<FormItem className="flex-1"><FormLabel>Distance (km)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} readOnly className="bg-gray-100" /></FormControl><FormMessage /></FormItem>)} />
+          {/* Distance Input Field */}
+          <FormField
+            control={control}
+            name="distanceKm"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>Distance (km)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="Enter manually..."
+                    {...field}
+                    onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {/* "Calculate" Button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCalculateDistance}
+            disabled={calculating}
+            className="mt-2"
+          >
+            {calculating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Route className="mr-2 h-4 w-4" />
+            )}
+            Calculate
+          </Button>
         </div>
       </div>
     </div>
   );
 };
+
 
 const ImageUploadField = ({ form, name, label }) => {
   const { control, getValues, setValue } = form;
@@ -235,14 +357,32 @@ const ImageUploadField = ({ form, name, label }) => {
 
   return (<Controller name={name} control={control} render={({ field }) => (<div className="space-y-2"><Label htmlFor={name}>{label}</Label><div className="flex items-center justify-center w-full"><label htmlFor={name} className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"><UploadCloud className="w-8 h-8 mb-2 text-gray-500" /><p className="text-sm text-gray-500"><span className="font-semibold">Click to upload</span></p><Input id={name} type="file" className="hidden" multiple onChange={(e) => field.onChange(e.target.files)} /></label></div>{files?.length > 0 && (<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mt-2">{Array.from(files).map((file, index) => (<div key={index} className="relative group aspect-square"><img src={URL.createObjectURL(file)} alt={`preview ${index}`} className="h-full w-full object-cover rounded-md" /><button type="button" onClick={() => handleFileRemove(index)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button></div>))}</div>)}</div>)} />);
 };
-const Step3UploadImages = ({ form }) => (<div className="space-y-6"><ImageUploadField form={form} name="wasteImages" label="Waste Images" /><ImageUploadField form={form} name="recyclingImages" label="Recycling Process Images" /></div>);
+
+// MODIFIED: Removed recyclingImages field
+const Step3UploadImages = ({ form }) => (
+  <div>
+    <ImageUploadField form={form} name="wasteImages" label="Waste Images" />
+    <p className="mt-2 text-sm text-gray-500">
+      Upload photos of collected waste materials (e.g., plastic bottles, cans, or mixed waste).
+      These images will appear in the Appendix section of your report. This step is optional.
+    </p>
+  </div>
+);
 
 const ReviewItem = ({ label, value }) => (<div className="flex justify-between py-2 border-b"><dt className="text-sm text-gray-600">{label}</dt><dd className="text-sm font-medium text-gray-800 text-right">{value || 'N/A'}</dd></div>);
+
+// MODIFIED: Step 4 Review
 const Step4Review = ({ form, masterData }) => {
   const data = form.watch();
+
+  // Find names for relations
   const categoryName = masterData?.wasteCategories?.find(c => c.id === data.wasteCategoryId)?.name;
   const typeName = masterData?.wasteCategories?.flatMap(c => c.types).find(t => t.id === data.wasteTypeId)?.name;
-  const techName = masterData?.recyclingTechnologies?.find(t => t.id === data.recyclingTechnologyId)?.name;
+  // REMOVED: techName
+  const vehicleName = masterData?.vehicleTypes?.find(v => v.id === data.vehicleTypeId)?.name;
+  const pickupLocationName = masterData?.pickupLocations?.find(p => p.id === data.pickupLocationId)?.name;
+  const facilityName = masterData?.facilities?.find(f => f.id === data.facilityId)?.name;
+
   return (
     <div className="max-h-[400px] overflow-y-auto pr-4 space-y-6">
       <Card><CardHeader><CardTitle>Waste Details</CardTitle></CardHeader><CardContent><dl className="space-y-1">
@@ -251,16 +391,22 @@ const Step4Review = ({ form, masterData }) => {
         <ReviewItem label="Waste Type" value={typeName} />
         <ReviewItem label="Weight / Quantity" value={`${data.quantity} ${data.unit}`} />
       </dl></CardContent></Card>
-      <Card><CardHeader><CardTitle>Recycling & Logistics</CardTitle></CardHeader><CardContent><dl className="space-y-1">
-        <ReviewItem label="Date Recycled" value={data.recycledDate ? format(data.recycledDate, 'PPP') : 'N/A'} />
-        <ReviewItem label="Recycling Technology" value={techName} />
-        <ReviewItem label="Vehicle Type" value={data.vehicleType} />
-        <ReviewItem label="Calculated Distance" value={data.distanceKm ? `${data.distanceKm} km` : 'N/A'} />
+
+      {/* MODIFIED: Card title and content */}
+      <Card><CardHeader><CardTitle>Logistics</CardTitle></CardHeader><CardContent><dl className="space-y-1">
+        {/* REMOVED: Date Recycled */}
+        {/* REMOVED: Recycling Technology */}
+        <ReviewItem label="Vehicle" value={vehicleName} />
+        <ReviewItem label="Pickup Location" value={pickupLocationName} />
+        <ReviewItem label="Facility" value={facilityName} />
+        <ReviewItem label="Distance" value={data.distanceKm ? `${data.distanceKm} km` : 'N/Warning'} />
       </dl></CardContent></Card>
-      {(data.wasteImages?.length > 0 || data.recyclingImages?.length > 0) && (
+
+      {/* MODIFIED: Conditional and content for images */}
+      {(data.wasteImages?.length > 0) && (
         <Card><CardHeader><CardTitle>Uploaded Images</CardTitle></CardHeader><CardContent className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {data.wasteImages && Array.from(data.wasteImages).map((file, i) => <img key={`waste-${i}`} src={URL.createObjectURL(file)} className="h-24 w-full object-cover rounded-md" />)}
-          {data.recyclingImages && Array.from(data.recyclingImages).map((file, i) => <img key={`recycle-${i}`} src={URL.createObjectURL(file)} className="h-24 w-full object-cover rounded-md" />)}
+          {/* REMOVED: recyclingImages map */}
         </CardContent></Card>
       )}
     </div>
@@ -498,11 +644,35 @@ const AddWasteEntryDialog = ({ clientId, onWasteEntryAdded }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(0); // Start at 0 for input choice step
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [masterData, setMasterData] = useState({ wasteCategories: [], recyclingTechnologies: [] });
+  // MODIFIED: Added new arrays to masterData state
+  const [masterData, setMasterData] = useState({
+    wasteCategories: [],
+    recyclingTechnologies: [], // Kept in case other parts of app use it
+    pickupLocations: [],
+    facilities: [],
+    vehicleTypes: []
+  });
 
   const form = useForm({
+    mode: 'onChange', // This ensures isValid is always up-to-date
     resolver: zodResolver(wasteDataSchema),
-    defaultValues: { unit: "KG", quantity: 0 },
+    defaultValues: {
+      // Step 1 Fields
+      pickupDate: null,       // <-- Was missing
+      wasteCategoryId: "",  // <-- Was missing
+      wasteTypeId: "",      // <-- Was missing
+      quantity: 0,
+      unit: "KG",
+
+      // Step 2 Fields
+      vehicleTypeId: "",
+      pickupLocationId: "",
+      facilityId: "",
+      distanceKm: 0,
+
+      // Step 3 Fields
+      wasteImages: null,
+    },
   });
   const onUploadSuccess = () => {
     onWasteEntryAdded(); // This refreshes the data on the parent page
@@ -510,10 +680,13 @@ const AddWasteEntryDialog = ({ clientId, onWasteEntryAdded }) => {
   };
 
   useEffect(() => {
+    // MODIFIED: Condition to check any of the master data arrays
     if (isOpen && masterData.wasteCategories.length === 0) {
       const fetchMasterData = async () => {
         try {
           const response = await api.get('/master-data');
+          // This will now populate all arrays (categories, locations, facilities, vehicles)
+          // assuming your /master-data endpoint returns them all.
           setMasterData(response.data);
         } catch (error) {
           toast.error("Failed to load form options.");
@@ -527,8 +700,9 @@ const AddWasteEntryDialog = ({ clientId, onWasteEntryAdded }) => {
     try {
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
+        // MODIFIED: no longer need to check for recyclingImages
         if (value !== null && value !== undefined && value !== "") {
-          if (key === 'wasteImages' || key === 'recyclingImages') {
+          if (key === 'wasteImages') { // Only check for wasteImages
             if (value.length > 0) Array.from(value).forEach(file => formData.append(key, file));
           } else {
             formData.append(key, value instanceof Date ? value.toISOString() : value);
@@ -549,7 +723,8 @@ const AddWasteEntryDialog = ({ clientId, onWasteEntryAdded }) => {
   const handleNext = async () => {
     let fieldsToValidate = [];
     if (step === 1) fieldsToValidate = ['pickupDate', 'wasteCategoryId', 'wasteTypeId', 'quantity', 'unit'];
-    if (step === 2) fieldsToValidate = ['recycledDate'];
+    // MODIFIED: Step 2 fields are optional per schema, so no validation needed.
+    // if (step === 2) fieldsToValidate = ['recycledDate'];
     const isValid = await form.trigger(fieldsToValidate);
     if (isValid) setStep(prev => prev + 1);
   };
@@ -558,6 +733,7 @@ const AddWasteEntryDialog = ({ clientId, onWasteEntryAdded }) => {
   const resetAndRestart = () => { form.reset(); setIsSubmitted(false); setStep(0); };// Reset to step 0 for input choice
   const handleOpenChange = (open) => { if (!open) resetAndRestart(); setIsOpen(open); };
   const progress = (step / STEPS.length) * 100;
+  console.log("Form Errors:", form.formState.errors);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -578,7 +754,8 @@ const AddWasteEntryDialog = ({ clientId, onWasteEntryAdded }) => {
               <div className="min-h-[420px] py-4">
                 {step === 0 && <Step0UploadChoice setStep={setStep} clientId={clientId} onUploadSuccess={onUploadSuccess} />}
                 {step === 1 && <Step1WasteDetails control={form.control} form={form} masterData={masterData} />}
-                {step === 2 && <Step2RecyclingLogistics control={form.control} form={form} masterData={masterData} />}
+                {/* MODIFIED: Use new Step2Logistics component */}
+                {step === 2 && <Step2Logistics control={form.control} form={form} masterData={masterData} />}
                 {step === 3 && <Step3UploadImages form={form} />}
                 {step === 4 && <Step4Review form={form} masterData={masterData} />}
               </div>
@@ -586,7 +763,7 @@ const AddWasteEntryDialog = ({ clientId, onWasteEntryAdded }) => {
                 {step > 1 && <Button type="button" variant="outline" onClick={handleBack}>Back</Button>}
                 {step > 0 && (
                   <div className="ml-auto flex items-center gap-2">
-                    <Button type="button" onClick={handleBack} variant="ghost">Back</Button>
+                    {/* <Button type="button" onClick={handleBack} variant="ghost">Back</Button> */}
                     {step < STEPS.length && (
                       <Button type="button" onClick={handleNext} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
                         Next
@@ -609,4 +786,3 @@ const AddWasteEntryDialog = ({ clientId, onWasteEntryAdded }) => {
 };
 
 export default AddWasteEntryDialog;
-

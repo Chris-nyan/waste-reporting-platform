@@ -1,5 +1,4 @@
-import { createContext, useState, useEffect } from 'react';
-import { jwtDecode } from 'jwt-decode';
+import React, { createContext, useState, useEffect, useContext } from 'react';import { jwtDecode } from 'jwt-decode';
 import api from '../lib/api';
 import { toast } from 'react-toastify';
 
@@ -79,5 +78,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+export const useAuth = () => useContext(AuthContext);
 export default AuthContext;
+
 

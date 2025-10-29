@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "translate": "node scripts/translateJsonFiles.js"
+    
   },
   "dependencies": {
+    "@google-cloud/translate": "^9.2.1",
     "@prisma/client": "^6.16.2",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.12.2",
@@ -13,12 +16,14 @@
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
     "date-fns": "^4.1.0",
-    "dotenv": "^17.2.2",
+    "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "fast-csv": "^5.0.5",
+    "glob": "^11.0.3",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
     "puppeteer": "^24.23.0"
   },
   "devDependencies": {

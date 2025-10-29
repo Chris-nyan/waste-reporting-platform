@@ -1,115 +1,311 @@
 const { PrismaClient } = require('@prisma/client');
-const { subMonths } = require('date-fns');
+// Add 'format' for monthly grouping
+const { subMonths, format } = require('date-fns');
 const prisma = new PrismaClient();
 
 // A placeholder for emission factors (in a real app, this would be in a separate config or table)
 const EMISSION_FACTORS = {
-  'Cardboard': 2.5,
-  'PET': 1.8,
-  'Aluminum': 9.1,
-  'Glass': 0.8,
-  'Default': 1.5, // Average factor for other materials
+    'Cardboard': 2.5,
+    'PET': 1.8,
+    'Aluminum': 9.1,
+    'Glass': 0.8,
+    'Default': 1.5, // Average factor for other materials
 };
 
 const getTenantDashboard = async (req, res) => {
-  try {
-    const tenantId = req.user.tenantId;
-    const { timeframe } = req.query;
+    try {
+        const tenantId = req.user.tenantId;
+        const { timeframe, start, end } = req.query;
+        let startDate;
+        let endDate = new Date();
 
-    let startDate;
-    const endDate = new Date();
+        if (timeframe === '30d') startDate = subMonths(endDate, 1);
+        else if (timeframe === '3m') startDate = subMonths(endDate, 3);
+        else if (timeframe === '6m') startDate = subMonths(endDate, 6);
+        else if (timeframe === '1y') startDate = subMonths(endDate, 12);
+        else if (timeframe === 'custom' && start && end) {
+            startDate = new Date(start);
+            endDate = new Date(end);
+        } else startDate = new Date(0); // default: all time
 
-    if (timeframe === '6m') startDate = subMonths(endDate, 6);
-    else if (timeframe === '1y') startDate = subMonths(endDate, 12);
-    else startDate = new Date(0);
+        // --- KPI Card Calculations (Partial) ---
+        const clientCount = await prisma.client.count({ where: { tenantId } });
 
-    // --- KPI Card Calculations ---
-    const clientCount = await prisma.client.count({ where: { tenantId } });
-
-    // --- THIS IS THE CRITICAL FIX ---
-    // The query now correctly filters by 'generatedAt' instead of 'createdAt'
-    const reportCount = await prisma.report.count({
-      where: {
-        client: { tenantId },
-        generatedAt: { gte: startDate, lte: endDate },
-      },
-    });
-    
-    const wasteEntries = await prisma.wasteData.findMany({
-      where: {
-        client: { tenantId },
-        recycledDate: { gte: startDate, lte: endDate },
-      },
-      include: {
-        client: { select: { companyName: true } },
-        wasteType: true,
-      }
-    });
-    
-    const totalWasteEntries = wasteEntries.length;
-    const totalRecycledWeight = wasteEntries.reduce((sum, entry) => sum + entry.quantity, 0);
-    const averageWastePerClient = clientCount > 0 ? totalRecycledWeight / clientCount : 0;
-
-    // --- Chart Data Calculations ---
-    const wasteBreakdown = wasteEntries.reduce((acc, entry) => {
-      acc[entry.wasteType.name] = (acc[entry.wasteType.name] || 0) + entry.quantity;
-      return acc;
-    }, {});
-    const wasteBreakdownChartData = Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }));
-    
-    const clientPerformance = wasteEntries.reduce((acc, entry) => {
-        const { companyName } = entry.client;
-        acc[companyName] = (acc[companyName] || 0) + entry.quantity;
-        return acc;
-    }, {});
-
-    const allReportsInPeriod = await prisma.report.findMany({
-        where: { client: { tenantId }, generatedAt: { gte: startDate, lte: endDate } },
-        select: { clientId: true }
-    });
-
-    const clientLeaderboardData = Object.entries(clientPerformance)
-        .map(([clientName, totalWeight]) => {
-            const clientRecord = wasteEntries.find(we => we.client.companyName === clientName)?.client;
-            const reportsGenerated = allReportsInPeriod.filter(r => r.clientId === clientRecord?.id).length;
-            return { clientName, totalWeight: parseFloat(totalWeight.toFixed(2)), reportsGenerated };
-        })
-        .sort((a, b) => b.totalWeight - a.totalWeight);
-
-    const top5ClientNames = clientLeaderboardData.slice(0, 5).map(c => c.clientName);
-    const wasteTypes = [...new Set(wasteEntries.map(e => e.wasteType.name))];
-    
-    const clientWasteBreakdown = top5ClientNames.map(clientName => {
-        const clientData = { clientName };
-        wasteTypes.forEach(type => {
-            const total = wasteEntries
-                .filter(entry => entry.client.companyName === clientName && entry.wasteType.name === type)
-                .reduce((sum, entry) => sum + entry.quantity, 0);
-            clientData[type] = parseFloat(total.toFixed(2));
+        const reportCount = await prisma.report.count({
+            where: {
+                client: { tenantId },
+                generatedAt: { gte: startDate, lte: endDate },
+            },
         });
-        return clientData;
-    });
+        console.log('--- DEBUGGING QUERY ---');
+        console.log('Tenant ID:', tenantId);
+        console.log('Start Date (gte):', startDate.toISOString());
+        console.log('End Date (lte):', endDate.toISOString());
 
-    res.json({
-      kpis: {
-        totalClients: clientCount,
-        totalWasteEntries,
-        totalReportsGenerated: reportCount,
-        totalRecycledWeight: parseFloat(totalRecycledWeight.toFixed(2)),
-      },
-      charts: {
-        clientLeaderboard: clientLeaderboardData,
-        clientWasteBreakdown: {
-            data: clientWasteBreakdown,
-            wasteTypes,
-        },
-      },
-    });
+        // --- Main Data Fetch (OPTIMIZED) ---
+        // We now fetch all related data in one go for efficiency
+        const wasteEntries = await prisma.wasteData.findMany({
+            where: {
+                client: { tenantId },
+                pickupDate: { gte: startDate, lte: endDate },
+            },
+            include: {
+                client: { select: { companyName: true, id: true } }, // Include 'id' for leaderboard logic
+                wasteType: {
+                    include: {
+                        category: { select: { name: true } } // NEW: For 'Waste by Category' chart
+                    }
+                },
+                facility: { select: { name: true } } // NEW: For 'Waste by Facility' chart
+            }
+        });
 
-  } catch (error) {
-    console.error("Error fetching tenant dashboard data:", error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
+        const totalWasteEntries = wasteEntries.length;
+
+        // --- KPI & Chart Data Initializers ---
+        let totalRecycledWeight = 0;
+        let totalEmissionsAvoided = 0;
+        const wasteByTypeMap = {};
+        const clientPerformanceMap = {};
+        const monthlyPickupMap = {};
+        const wasteByCategoryMap = {};
+        const emissionsBreakdownMap = {};
+        const wasteByFacilityMap = {};
+
+        // Iterate over waste entries ONCE to build all data maps
+        for (const entry of wasteEntries) {
+            const quantity = entry.quantity;
+            const wasteTypeName = entry.wasteType.name;
+
+            // 1. Calculate Total Weight
+            totalRecycledWeight += quantity;
+
+            // 2. Calculate Emissions (for KPI & Chart)
+            const emissionFactor = EMISSION_FACTORS[wasteTypeName] || EMISSION_FACTORS['Default'];
+            const emissions = quantity * emissionFactor;
+            totalEmissionsAvoided += emissions;
+            emissionsBreakdownMap[wasteTypeName] = (emissionsBreakdownMap[wasteTypeName] || 0) + emissions;
+
+            // 3. Aggregate for 'Waste by Type' chart (Original)
+            wasteByTypeMap[wasteTypeName] = (wasteByTypeMap[wasteTypeName] || 0) + quantity;
+
+            // 4. Aggregate for 'Client Performance' (Original)
+            clientPerformanceMap[entry.client.companyName] = (clientPerformanceMap[entry.client.companyName] || 0) + quantity;
+
+
+            // 5. NEW: Aggregate for 'Monthly Pickup Trend'
+            const monthKeyPickup = format(entry.pickupDate, 'yyyy-MM');
+            monthlyPickupMap[monthKeyPickup] = (monthlyPickupMap[monthKeyPickup] || 0) + quantity;
+
+
+            // 6. NEW: Aggregate for 'Waste by Category'
+            const categoryName = entry.wasteType.category?.name || 'Uncategorized';
+            wasteByCategoryMap[categoryName] = (wasteByCategoryMap[categoryName] || 0) + quantity;
+
+            // 7. NEW: Aggregate for 'Waste by Facility'
+            const facilityName = entry.facility?.name || 'Unspecified Facility';
+            wasteByFacilityMap[facilityName] = (wasteByFacilityMap[facilityName] || 0) + quantity;
+        }
+
+        // --- Helper to format map data for charts ---
+        const formatChartData = (map) => Object.entries(map)
+            .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+            .sort((a, b) => b.value - a.value); // Sort descending by value
+
+        // --- Format Chart Data ---
+        const wasteByTypeChart = formatChartData(wasteByTypeMap);
+        const wasteByCategoryChart = formatChartData(wasteByCategoryMap);
+        const emissionsAvoidedBreakdownChart = formatChartData(emissionsBreakdownMap);
+        const wasteByFacilityChart = formatChartData(wasteByFacilityMap);
+
+        // Format monthly data and sort by date (ascending)
+        const monthlyPickupTrend = Object.entries(monthlyPickupMap)
+            .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        // --- Client Leaderboard Logic (Original, slightly cleaner) ---
+        const allReportsInPeriod = await prisma.report.findMany({
+            where: { client: { tenantId }, generatedAt: { gte: startDate, lte: endDate } },
+            select: { clientId: true }
+        });
+
+        const clientLeaderboardData = Object.entries(clientPerformanceMap)
+            .map(([clientName, totalWeight]) => {
+                // Find the client ID from the entries we already have
+                const clientId = wasteEntries.find(we => we.client.companyName === clientName)?.client.id;
+                const reportsGenerated = allReportsInPeriod.filter(r => r.clientId === clientId).length;
+                return { clientName, totalWeight: parseFloat(totalWeight.toFixed(2)), reportsGenerated };
+            })
+            .sort((a, b) => b.totalWeight - a.totalWeight);
+
+        // --- Client Waste Breakdown Logic (Original, unchanged) ---
+        const top5ClientNames = clientLeaderboardData.slice(0, 5).map(c => c.clientName);
+        const wasteTypes = [...new Set(wasteEntries.map(e => e.wasteType.name))];
+
+        const clientWasteBreakdown = top5ClientNames.map(clientName => {
+            const clientData = { clientName };
+            wasteTypes.forEach(type => {
+                const total = wasteEntries
+                    .filter(entry => entry.client.companyName === clientName && entry.wasteType.name === type)
+                    .reduce((sum, entry) => sum + entry.quantity, 0);
+                clientData[type] = parseFloat(total.toFixed(2));
+            });
+            return clientData;
+        });
+
+        // --- Final Response Object ---
+        res.json({
+            kpis: {
+                totalClients: clientCount,
+                totalWasteEntries,
+                totalReportsGenerated: reportCount,
+                totalRecycledWeight: parseFloat(totalRecycledWeight.toFixed(2)),
+                totalEmissionsAvoided: parseFloat(totalEmissionsAvoided.toFixed(2)), // <-- NEW KPI
+            },
+            charts: {
+                // Original Charts
+                clientLeaderboard: clientLeaderboardData,
+                clientWasteBreakdown: {
+                    data: clientWasteBreakdown,
+                    wasteTypes,
+                },
+                // NEW Charts
+                monthlyPickupTrend,
+                wasteByType: wasteByTypeChart, // Renamed from 'wasteBreakdownChartData'
+                wasteByCategory: wasteByCategoryChart,
+                emissionsAvoidedBreakdown: emissionsAvoidedBreakdownChart,
+                wasteByFacility: wasteByFacilityChart,
+            },
+        });
+
+    } catch (error) {
+        console.error("Error fetching tenant dashboard data:", error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+const getGlobalDashboard = async (req, res) => {
+    try {
+        const { timeframe, start, end } = req.query;
+        let startDate;
+        let endDate = new Date();
+
+        // 1. Same timeframe logic
+        if (timeframe === '30d') startDate = subMonths(endDate, 1);
+        else if (timeframe === '3m') startDate = subMonths(endDate, 3);
+        else if (timeframe === '6m') startDate = subMonths(endDate, 6);
+        else if (timeframe === '1y') startDate = subMonths(endDate, 12);
+        else if (timeframe === 'custom' && start && end) {
+            startDate = new Date(start);
+            endDate = new Date(end);
+        } else startDate = new Date(0);
+
+        // 2. Get total number of tenants
+        const totalTenants = await prisma.tenant.count({
+            where: { status: 'ACTIVE' } 
+        });
+        const tenantCountForAvg = totalTenants > 0 ? totalTenants : 1;
+
+        // 3. Fetch waste data across ALL tenants
+        // --- MODIFIED: Include wasteType name for emissions ---
+        const allWasteEntries = await prisma.wasteData.findMany({
+            where: {
+                pickupDate: { gte: startDate, lte: endDate },
+            },
+            include: {
+                wasteType: { // Need full wasteType for name and category
+                    include: {
+                        category: { select: { name: true } }
+                    }
+                },
+            }
+        });
+
+        // 4. Aggregate data
+        const globalMonthlyVolumeMap = {};
+        const globalCategoryMap = {};
+        const globalMonthlyEmissionsMap = {}; // --- NEW ---
+        const heatmapDataMap = {}; // --- NEW (for stacked bar) ---
+
+        for (const entry of allWasteEntries) {
+            const quantity = entry.quantity;
+            const wasteTypeName = entry.wasteType.name;
+            const categoryName = entry.wasteType.category?.name || 'Uncategorized';
+            const monthKey = format(entry.pickupDate, 'yyyy-MM');
+
+            // --- Original: Platform Average Volume Trend ---
+            globalMonthlyVolumeMap[monthKey] = (globalMonthlyVolumeMap[monthKey] || 0) + quantity;
+
+            // --- Original: Platform Waste Composition (Pie) ---
+            globalCategoryMap[categoryName] = (globalCategoryMap[categoryName] || 0) + quantity;
+
+            // --- NEW: Platform Average Emissions Trend ---
+            const emissionFactor = EMISSION_FACTORS[wasteTypeName] || EMISSION_FACTORS['Default'];
+            const emissions = quantity * emissionFactor;
+            globalMonthlyEmissionsMap[monthKey] = (globalMonthlyEmissionsMap[monthKey] || 0) + emissions;
+
+            // --- NEW: Heatmap/Stacked Bar Data (Category by Month) ---
+            if (!heatmapDataMap[monthKey]) heatmapDataMap[monthKey] = {};
+            heatmapDataMap[monthKey][categoryName] = (heatmapDataMap[monthKey][categoryName] || 0) + quantity;
+        }
+
+        // 5. Format chart data
+        
+        // --- Original (Volume) ---
+        // I've renamed platformAverageTrend to platformAverageVolumeTrend for clarity
+        const platformAverageVolumeTrend = Object.entries(globalMonthlyVolumeMap)
+            .map(([name, totalValue]) => ({ 
+                name, 
+                value: parseFloat((totalValue / tenantCountForAvg).toFixed(2)) 
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        // --- Original (Composition Pie) ---
+        const platformWasteComposition = Object.entries(globalCategoryMap)
+            .map(([name, value]) => ({ 
+                name, 
+                value: parseFloat(value.toFixed(2)) 
+            }))
+            .sort((a, b) => b.value - a.value);
+
+        // --- NEW: Format Emissions Trend ---
+        const platformAverageEmissionsTrend = Object.entries(globalMonthlyEmissionsMap)
+            .map(([name, totalValue]) => ({
+                name,
+                value: parseFloat((totalValue / tenantCountForAvg).toFixed(2))
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        // --- NEW: Format Heatmap/Stacked Bar Data ---
+        // Get all unique categories found in the data
+        const allCategories = [...new Set(Object.values(heatmapDataMap).flatMap(monthData => Object.keys(monthData)))];
+        
+        const globalMonthlyComposition = Object.entries(heatmapDataMap)
+            .map(([month, categories]) => {
+                const monthData = { name: month };
+                allCategories.forEach(cat => {
+                    monthData[cat] = parseFloat((categories[cat] || 0).toFixed(2)); // Ensure all categories are present
+                });
+                return monthData;
+            })
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        // 6. Send the response
+        res.json({
+            charts: {
+                platformAverageVolumeTrend, // --- RENAMED ---
+                platformWasteComposition,
+                platformAverageEmissionsTrend, // --- NEW ---
+                globalMonthlyComposition: { // --- NEW (for heatmap/stacked bar) ---
+                    data: globalMonthlyComposition,
+                    keys: allCategories // Send the keys (e.g., ['Plastic', 'Paper']) to the frontend
+                }
+            },
+        });
+
+    } catch (error) {
+        console.error("Error fetching global dashboard data:", error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
 };
 
 const getSuperAdminDashboard = async (req, res) => {
@@ -117,7 +313,7 @@ const getSuperAdminDashboard = async (req, res) => {
 };
 
 module.exports = {
-  getTenantDashboard,
-  getSuperAdminDashboard,
+    getTenantDashboard,
+    getGlobalDashboard,
+    getSuperAdminDashboard,
 };
-

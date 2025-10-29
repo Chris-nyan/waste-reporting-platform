@@ -149,6 +149,15 @@ git pull origin <branch>	Pull latest changes
 	•	Logging and debugging: use console.log or browser dev tools for client, console.error for server.
 
 ⸻
+## **9. Language Translation**
+
+Find the language in Public -> locales, and you can edit there. once you edited, don't forget to run respective command in server folder to be effective.
+
+npm run translate es
+npm run translate th
+npm run translate zh
+npm run translate my
+npm run translate vi
 
 Happy coding! 🚀
 

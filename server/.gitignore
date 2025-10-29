@@ -4,5 +4,8 @@
 # Environment variables
 .env
 
+# Google Cloud credentials
+google-credentials.json
 
-/generated/prisma
+
+# /generated/prisma

@@ -183,6 +183,130 @@ const getTenantDashboard = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+const getGlobalDashboard = async (req, res) => {
+    try {
+        const { timeframe, start, end } = req.query;
+        let startDate;
+        let endDate = new Date();
+
+        // 1. Same timeframe logic
+        if (timeframe === '30d') startDate = subMonths(endDate, 1);
+        else if (timeframe === '3m') startDate = subMonths(endDate, 3);
+        else if (timeframe === '6m') startDate = subMonths(endDate, 6);
+        else if (timeframe === '1y') startDate = subMonths(endDate, 12);
+        else if (timeframe === 'custom' && start && end) {
+            startDate = new Date(start);
+            endDate = new Date(end);
+        } else startDate = new Date(0);
+
+        // 2. Get total number of tenants
+        const totalTenants = await prisma.tenant.count({
+            where: { status: 'ACTIVE' } 
+        });
+        const tenantCountForAvg = totalTenants > 0 ? totalTenants : 1;
+
+        // 3. Fetch waste data across ALL tenants
+        // --- MODIFIED: Include wasteType name for emissions ---
+        const allWasteEntries = await prisma.wasteData.findMany({
+            where: {
+                pickupDate: { gte: startDate, lte: endDate },
+            },
+            include: {
+                wasteType: { // Need full wasteType for name and category
+                    include: {
+                        category: { select: { name: true } }
+                    }
+                },
+            }
+        });
+
+        // 4. Aggregate data
+        const globalMonthlyVolumeMap = {};
+        const globalCategoryMap = {};
+        const globalMonthlyEmissionsMap = {}; // --- NEW ---
+        const heatmapDataMap = {}; // --- NEW (for stacked bar) ---
+
+        for (const entry of allWasteEntries) {
+            const quantity = entry.quantity;
+            const wasteTypeName = entry.wasteType.name;
+            const categoryName = entry.wasteType.category?.name || 'Uncategorized';
+            const monthKey = format(entry.pickupDate, 'yyyy-MM');
+
+            // --- Original: Platform Average Volume Trend ---
+            globalMonthlyVolumeMap[monthKey] = (globalMonthlyVolumeMap[monthKey] || 0) + quantity;
+
+            // --- Original: Platform Waste Composition (Pie) ---
+            globalCategoryMap[categoryName] = (globalCategoryMap[categoryName] || 0) + quantity;
+
+            // --- NEW: Platform Average Emissions Trend ---
+            const emissionFactor = EMISSION_FACTORS[wasteTypeName] || EMISSION_FACTORS['Default'];
+            const emissions = quantity * emissionFactor;
+            globalMonthlyEmissionsMap[monthKey] = (globalMonthlyEmissionsMap[monthKey] || 0) + emissions;
+
+            // --- NEW: Heatmap/Stacked Bar Data (Category by Month) ---
+            if (!heatmapDataMap[monthKey]) heatmapDataMap[monthKey] = {};
+            heatmapDataMap[monthKey][categoryName] = (heatmapDataMap[monthKey][categoryName] || 0) + quantity;
+        }
+
+        // 5. Format chart data
+        
+        // --- Original (Volume) ---
+        // I've renamed platformAverageTrend to platformAverageVolumeTrend for clarity
+        const platformAverageVolumeTrend = Object.entries(globalMonthlyVolumeMap)
+            .map(([name, totalValue]) => ({ 
+                name, 
+                value: parseFloat((totalValue / tenantCountForAvg).toFixed(2)) 
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        // --- Original (Composition Pie) ---
+        const platformWasteComposition = Object.entries(globalCategoryMap)
+            .map(([name, value]) => ({ 
+                name, 
+                value: parseFloat(value.toFixed(2)) 
+            }))
+            .sort((a, b) => b.value - a.value);
+
+        // --- NEW: Format Emissions Trend ---
+        const platformAverageEmissionsTrend = Object.entries(globalMonthlyEmissionsMap)
+            .map(([name, totalValue]) => ({
+                name,
+                value: parseFloat((totalValue / tenantCountForAvg).toFixed(2))
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        // --- NEW: Format Heatmap/Stacked Bar Data ---
+        // Get all unique categories found in the data
+        const allCategories = [...new Set(Object.values(heatmapDataMap).flatMap(monthData => Object.keys(monthData)))];
+        
+        const globalMonthlyComposition = Object.entries(heatmapDataMap)
+            .map(([month, categories]) => {
+                const monthData = { name: month };
+                allCategories.forEach(cat => {
+                    monthData[cat] = parseFloat((categories[cat] || 0).toFixed(2)); // Ensure all categories are present
+                });
+                return monthData;
+            })
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        // 6. Send the response
+        res.json({
+            charts: {
+                platformAverageVolumeTrend, // --- RENAMED ---
+                platformWasteComposition,
+                platformAverageEmissionsTrend, // --- NEW ---
+                globalMonthlyComposition: { // --- NEW (for heatmap/stacked bar) ---
+                    data: globalMonthlyComposition,
+                    keys: allCategories // Send the keys (e.g., ['Plastic', 'Paper']) to the frontend
+                }
+            },
+        });
+
+    } catch (error) {
+        console.error("Error fetching global dashboard data:", error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
 
 const getSuperAdminDashboard = async (req, res) => {
     // This function remains the same
@@ -190,5 +314,6 @@ const getSuperAdminDashboard = async (req, res) => {
 
 module.exports = {
     getTenantDashboard,
+    getGlobalDashboard,
     getSuperAdminDashboard,
 };

@@ -280,11 +280,10 @@ const TenantDashboardPage = () => {
             </div>
 
             {/* --- NEW: TABS STRUCTURE --- */}
-            <div className="w-full bg-white/70 backdrop-blur-lg shadow-sm rounded-xl">
             <Tabs defaultValue="tenant" className="w-full pt-4">
-                <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-flex bg-white/60 backdrop-blur-xl border border-gray-200/50 shadow-sm p-1 h-auto rounded-xl">
-                    <TabsTrigger className="px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg" value="tenant">{t('dashboard.tabs.tenant', 'Your Tenant Information')}</TabsTrigger>
-                    <TabsTrigger className="px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg" value="global">{t('dashboard.tabs.global', 'Global Benchmarks')}</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+                    <TabsTrigger value="tenant">{t('dashboard.tabs.tenant', '👤 Your Tenant Information')}</TabsTrigger>
+                    <TabsTrigger value="global">{t('dashboard.tabs.global', '🌍 Global Benchmarks')}</TabsTrigger>
                 </TabsList>
 
                 {/* --- TAB 1: Your Tenant Information --- */}
@@ -469,6 +468,7 @@ const TenantDashboardPage = () => {
                 </TabsContent>
 
                 {/* --- TAB 2: Global Benchmarks --- */}
+                {/* --- TAB 2: Global Benchmarks --- */}
                 <TabsContent value="global" className="space-y-6 pt-4">
                     <p className="text-sm text-gray-500">
                         {t('dashboard.global.desc', 'See how your impact compares to the entire platform.')}
@@ -589,11 +589,9 @@ const TenantDashboardPage = () => {
                     </div>
                 </TabsContent>
             </Tabs>
-            </div>
 
             {/* --- OLD CHART SECTIONS (REMOVED) --- */}
             {/* The h3 and div grids that were here are now inside the TabsContent blocks above */}
-            
 
         </div>
     );

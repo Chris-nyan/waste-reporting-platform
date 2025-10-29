@@ -21,8 +21,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useTranslation } from 'react-i18next';
 
-const getStatusAppearance = (status) => {
+const getStatusAppearance = (status, t) => {
     switch (status) {
         case 'FULLY_RECYCLED':
             return { badge: 'bg-green-100 text-green-800', progressBar: '[&>div]:bg-green-500', text: 'Fully Recycled' };
@@ -35,6 +36,8 @@ const getStatusAppearance = (status) => {
 
 const ClientDetailPage = () => {
     const { clientId } = useParams();
+    const { t } = useTranslation();
+
     const [client, setClient] = useState(null);
     const [wasteEntries, setWasteEntries] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -58,7 +61,7 @@ const ClientDetailPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [clientId]);
+    }, [clientId, t]);
 
     useEffect(() => {
         fetchClientData();
@@ -72,7 +75,7 @@ const ClientDetailPage = () => {
             setEntryToDelete(null); // Close confirmation dialog
             fetchClientData(); // Refresh data
         } catch (err) {
-            toast.error('Failed to delete waste entry.');
+            toast.error(t('client_detail.toast_delete_error', 'Failed to delete waste entry.'));
             setEntryToDelete(null);
         }
     };
@@ -88,20 +91,21 @@ const ClientDetailPage = () => {
         <div className="flex-1 space-y-6 p-4 lg:p-8">
             <Link to="/app/clients" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to All Clients
+                {t('client_detail.back_link', 'Back to All Clients')}
+
             </Link>
 
             <Card className="shadow-sm">
                 <CardHeader>
                     <CardTitle className="text-2xl text-gray-800">{client?.companyName}</CardTitle>
-                    <CardDescription>Client profile and waste management history.</CardDescription>
+                    <CardDescription>{t('client_detail.profile_desc', 'Client profile and waste management history.')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 text-sm text-gray-600">
-                        <div><strong>Contact Person:</strong> {client?.contactPerson || 'N/A'}</div>
-                        <div><strong>Email:</strong> {client?.email || 'N/A'}</div>
-                        <div><strong>Phone:</strong> {client?.phone || 'N/A'}</div>
-                        <div><strong>Address:</strong> {client?.address || 'N/A'}</div>
+                        <div><strong>{t('client_detail.contact', 'Contact Person:')}</strong> {client?.contactPerson || 'N/A'}</div>
+                        <div><strong>{t('client_detail.email', 'Email:')}</strong> {client?.email || 'N/A'}</div>
+                        <div><strong>{t('client_detail.phone', 'Phone:')}</strong> {client?.phone || 'N/A'}</div>
+                        <div><strong>{t('client_detail.address', 'Address:')}</strong> {client?.address || 'N/A'}</div>
                     </div>
                 </CardContent>
             </Card>
@@ -109,8 +113,8 @@ const ClientDetailPage = () => {
             <Card className="shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                        <CardTitle>Waste Entries</CardTitle>
-                        <CardDescription>Log and track collected waste for this client. Click a row to see details.</CardDescription>
+                        <CardTitle>{t('client_detail.entries_title', 'Waste Entries')}</CardTitle>
+                        <CardDescription>{t('client_detail.entries_desc', 'Log and track collected waste for this client. Click a row to see details.')}</CardDescription>
                     </div>
                     <AddWasteEntryDialog clientId={clientId} onWasteEntryAdded={fetchClientData} />
                 </CardHeader>
@@ -118,18 +122,18 @@ const ClientDetailPage = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Pickup Date</TableHead>
-                                <TableHead>Waste Type</TableHead>
-                                <TableHead>Total Quantity</TableHead>
-                                <TableHead className="w-[250px]">Recycling Progress</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>{t('client_detail.col_pickup', 'Pickup Date')}</TableHead>
+                                <TableHead>{t('client_detail.col_type', 'Waste Type')}</TableHead>
+                                <TableHead>{t('client_detail.col_quantity', 'Total Quantity')}</TableHead>
+                                <TableHead className="w-[250px]">{t('client_detail.col_progress', 'Recycling Progress')}</TableHead>
+                                <TableHead className="text-right">{t('client_detail.col_actions', 'Actions')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {wasteEntries.length > 0 ? (
                                 wasteEntries.map((entry) => {
                                     const progress = entry.quantity > 0 ? (entry.recycledQuantity / entry.quantity) * 100 : 0;
-                                    const appearance = getStatusAppearance(entry.status);
+                                    const appearance = getStatusAppearance(entry.status, t);
                                     return (
                                         <TableRow key={entry.id} className="hover:bg-gray-50">
                                             <TableCell onClick={() => setSelectedEntry(entry)} className="cursor-pointer">{entry.pickupDate ? format(new Date(entry.pickupDate), 'PPP') : 'N/A'}</TableCell>
@@ -141,7 +145,7 @@ const ClientDetailPage = () => {
                                                     <span className="text-xs font-semibold">{Math.round(progress)}%</span>
                                                 </div>
                                                 <div className="flex items-center justify-between mt-1">
-                                                    <p className="text-xs text-gray-500">{entry.recycledQuantity} of {entry.quantity} {entry.unit}</p>
+                                                    <p className="text-xs text-gray-500">{t('client_detail.progress_text', '{{recycled}} of {{total}} {{unit}}', { recycled: entry.recycledQuantity, total: entry.quantity, unit: entry.unit })}</p>
                                                     <span className={cn("px-2 py-0.5 text-xs font-semibold rounded-full", appearance.badge)}>
                                                         {appearance.text}
                                                     </span>
@@ -159,7 +163,7 @@ const ClientDetailPage = () => {
                                                         disabled={entry.status === 'FULLY_RECYCLED'}
                                                     >
                                                         <Recycle className="mr-2 h-4 w-4" />
-                                                        {entry.status === 'FULLY_RECYCLED' ? 'Recycled' : 'Process'}
+                                                        {entry.status === 'FULLY_RECYCLED' ? t('client_detail.btn_recycled', 'Recycled') : t('client_detail.btn_process', 'Process')}
                                                     </Button>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -168,9 +172,9 @@ const ClientDetailPage = () => {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => setSelectedEntry(entry)}><Edit className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => setSelectedEntry(entry)}><Edit className="mr-2 h-4 w-4" /> {t('client_detail.dropdown_details', 'View Details')}</DropdownMenuItem>
                                                             <DropdownMenuSeparator />
-                                                            <DropdownMenuItem onSelect={() => setEntryToDelete(entry)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => setEntryToDelete(entry)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" /> {t('client_detail.dropdown_delete', 'Delete')}</DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </div>
@@ -181,7 +185,7 @@ const ClientDetailPage = () => {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan="5" className="h-24 text-center text-gray-500">
-                                        No waste entries found. Click "Add Waste Entry" to log a collection.
+                                        {t('client_detail.no_entries', 'No waste entries found. Click "Add Waste Entry" to log a collection.')}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -208,8 +212,8 @@ const ClientDetailPage = () => {
                 open={!!entryToDelete}
                 onOpenChange={(isOpen) => !isOpen && setEntryToDelete(null)}
                 onConfirm={handleDeleteEntry}
-                title="Are you sure?"
-                description="This action cannot be undone. This will permanently delete this waste entry and all of its recycling history."
+                title={t('client_detail.confirm_title', 'Are you sure?')}
+                description={t('client_detail.confirm_desc', 'This action cannot be undone. This will permanently delete this waste entry and all of its recycling history.')}
             />
         </div>
     );

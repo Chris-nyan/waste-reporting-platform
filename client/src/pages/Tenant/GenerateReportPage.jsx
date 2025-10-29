@@ -18,6 +18,7 @@ import api from '@/lib/api';
 import { reportSchemas } from '@/schemas/reportSchemas';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 const STEPS = [
     { id: 1, title: 'Configuration' },
@@ -30,6 +31,7 @@ const STEPS = [
 
 const ImageUploadField = ({ form, name, label, icon: Icon }) => {
     const { control, watch, setValue } = form;
+    const { t } = useTranslation();
     const file = watch(name);
     const [preview, setPreview] = useState(null);
 
@@ -69,7 +71,7 @@ const ImageUploadField = ({ form, name, label, icon: Icon }) => {
                             >
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <Icon className="w-8 h-8 mb-2 text-gray-500" />
-                                    <p className="text-sm text-gray-500"><span className="font-semibold">Click to upload</span></p>
+                                    <p className="text-sm text-gray-500"><span className="font-semibold">{t('report_generator.img_upload', 'Click to upload')}</span></p>
                                 </div>
                                 <Input
                                     id={`${name}-upload`}
@@ -88,30 +90,34 @@ const ImageUploadField = ({ form, name, label, icon: Icon }) => {
     );
 };
 
-const Step1ConfigureReport = ({ form }) => (
-    <div className="space-y-6">
-        <FormField
-            control={form.control}
-            name="reportTitle"
-            render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Report Title</FormLabel>
-                    <FormControl>
-                        <Input placeholder="e.g., Q3 Sustainability Report" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}
-        />
-        <div className="grid grid-cols-2 gap-6">
-            <ImageUploadField form={form} name="coverImage" label="Cover Image (Optional)" icon={ImageIcon} />
-            <ImageUploadField form={form} name="logo" label="Company Logo (Optional)" icon={UploadCloud} />
+const Step1ConfigureReport = ({ form }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="space-y-6">
+            <FormField
+                control={form.control}
+                name="reportTitle"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>{t('report_generator.step1.title', 'Report Title')}</FormLabel>
+                        <FormControl>
+                            <Input placeholder={t('report_generator.step1.title_placeholder', 'e.g., Q3 Sustainability Report')} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <div className="grid grid-cols-2 gap-6">
+                <ImageUploadField form={form} name="coverImage" label={t('report_generator.step1.cover', 'Cover Image (Optional)')} icon={ImageIcon} />
+                <ImageUploadField form={form} name="logo" label={t('report_generator.step1.logo', 'Company Logo (Optional)')} icon={UploadCloud} />
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const Step2SelectData = ({ form, masterData }) => {
     const { control, watch } = form;
+    const { t } = useTranslation();
     const [availableWasteTypes, setAvailableWasteTypes] = useState([]);
     const [isLoadingTypes, setIsLoadingTypes] = useState(false);
     const clientId = watch("clientId");
@@ -135,11 +141,11 @@ const Step2SelectData = ({ form, masterData }) => {
                 name="clientId"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Client</FormLabel>
+                        <FormLabel>{t('report_generator.step2.client', 'Client')}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a client" />
+                                    <SelectValue placeholder={t('report_generator.step2.client_placeholder', 'Select a client')} />
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -177,7 +183,7 @@ const Step2SelectData = ({ form, masterData }) => {
                                                 format(field.value.from, "LLL dd, y")
                                             )
                                         ) : (
-                                            <span>Pick a date range</span>
+                                            <span>{t('report_generator.step2.period_placeholder', 'Pick a date range')}</span>
                                         )}
                                     </Button>
                                 </FormControl>
@@ -204,9 +210,9 @@ const Step2SelectData = ({ form, masterData }) => {
                 render={({ field }) => (
                     <FormItem>
                         <div className="mb-4">
-                            <FormLabel>Included Waste Types</FormLabel>
+                            <FormLabel>{t('report_generator.step2.waste_types', 'Included Waste Types')}</FormLabel>
                             <FormDescription>
-                                Select which waste types to include in the report.
+                                {t('report_generator.step2.waste_types_desc', 'Select which waste types to include in the report.')}
                             </FormDescription>
                         </div>
 
@@ -246,7 +252,7 @@ const Step2SelectData = ({ form, masterData }) => {
                         ) : (
                             <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-gray-50 text-center">
                                 <p className="text-sm text-gray-500">
-                                    Select a client and date range to see available waste types.
+                                    {t('report_generator.step2.waste_types_empty', 'Select a client and date range to see available waste types.')}
                                 </p>
                             </div>
                         )}
@@ -260,18 +266,25 @@ const Step2SelectData = ({ form, masterData }) => {
 };
 
 const Step2_5IncludeWriting = ({ onSelect }) => {
+    const { t } = useTranslation();
+    const sampleQuestions = [
+        t('report_generator.step2_5.q1', 'What are the key highlights of this report?'),
+        t('report_generator.step2_5.q2', 'Any recommendations for improvement?'),
+        t('report_generator.step2_5.q3', 'Additional comments or notes?')
+    ];
+
     return (
         <div className="flex flex-col space-y-6 p-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200">
             {/* Header */}
             <div className="flex flex-col space-y-2">
-                <h2 className="text-xl font-semibold text-gray-800">Include a Writing Section?</h2>
+                <h2 className="text-xl font-semibold text-gray-800">{t('report_generator.step2_5.title', 'Include a Writing Section?')}</h2>
                 <p className="text-gray-600 text-sm">
-                    Adding a writing section allows you to provide custom insights in your report. Here are sample questions you might answer:
+                    {t('report_generator.step2_5.desc', 'Adding a writing section allows you to provide custom insights in your report. Here are sample questions you might answer:')}
                 </p>
                 <div className="flex justify-center">
                     <div className="flex items-center gap-2 bg-white border border-green-200 text-green-700 text-sm px-4 py-2 rounded-lg shadow-sm">
                         <Sparkles className="h-4 w-4" />
-                        <span>Our AI assistance is ready to help you answer these questions efficiently.</span>
+                        <span>{t('report_generator.step2_5.ai_prompt', 'Our AI assistance is ready to help you answer these questions efficiently.')}</span>
                     </div>
                 </div>
             </div>
@@ -296,14 +309,14 @@ const Step2_5IncludeWriting = ({ onSelect }) => {
                     onClick={() => onSelect(true)}
                     className="flex-1 py-3 px-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium rounded-xl shadow-md hover:from-green-600 hover:to-emerald-700 transition-all duration-300"
                 >
-                    Yes, Include
+                    {t('report_generator.step2_5.yes', 'Yes, Include')}
                 </Button>
 
                 <Button
                     onClick={() => onSelect(false)}
                     className="flex-1 py-3 px-5 bg-gray-100 text-gray-700 font-medium rounded-xl border border-gray-300 shadow-sm hover:bg-gray-200 transition-all duration-300"
                 >
-                    No, Skip
+                    {t('report_generator.step2_5.no', 'No, Skip')}
                 </Button>
             </div>
         </div>
@@ -311,6 +324,7 @@ const Step2_5IncludeWriting = ({ onSelect }) => {
 };
 
 const Step3AnswerQuestions = ({ form, questionPage }) => {
+    const { t } = useTranslation();
     const { control, getValues, setValue } = form;
     const { fields } = useFieldArray({ control, name: "questions" });
     const [isGenerating, setIsGenerating] = useState(false);
@@ -322,7 +336,7 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
 
     const handleGenerateAI = async () => {
         setIsGenerating(true);
-        toast.info("Generating AI insights, this may take a moment...");
+        toast.info(t('report_generator.step3.toast_generating', 'Generating AI insights, this may take a moment...'));
         const { clientId, dateRange, includedWasteTypeIds, questions } = getValues();
         try {
             const response = await api.post('/reports/generate-insights', {
@@ -340,10 +354,10 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
                 }
             });
 
-            toast.success("AI insights generated successfully!");
+            toast.success(t('report_generator.step3.toast_success', 'AI insights generated successfully!'));
         } catch (error) {
             console.error("Error generating AI insights:", error);
-            toast.error("Failed to generate AI insights.");
+            toast.error(t('report_generator.step3.toast_error', 'Failed to generate AI insights.'));
         } finally {
             setIsGenerating(false);
         }
@@ -378,17 +392,17 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
                             className="font-semibold tracking-tight text-transparent bg-clip-text 
                 bg-gradient-to-r from-[#007E33] via-[#00C853] to-[#00E676]"
                         >
-                            AI Assistance Available
+                            {t('report_generator.step3.ai_title', 'AI Assistance Available')}
                         </p>
                         <p className="text-sm text-gray-700 leading-snug">
-                            Fill in your answers manually, or let our{" "}
+                            {t('report_generator.step3.ai_desc1', 'Fill in your answers manually, or let our')}
                             <span
                                 className="font-medium text-transparent bg-clip-text 
                     bg-gradient-to-r from-[#007E33] via-[#00C853] to-[#00E676]"
                             >
-                                AI generate insights
+                                {t('report_generator.step3.ai_desc2', ' AI generate insights ')}
                             </span>{" "}
-                            for you.
+                            {t('report_generator.step3.ai_desc3', 'for you.')}
                         </p>
                     </div>
                 </div>
@@ -409,7 +423,7 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
                         ) : (
                             <Sparkles className="h-4 w-4 text-white" />
                         )}
-                        <span>Generate with AI</span>
+                        <span>{t('report_generator.step3.ai_btn', 'Generate with AI')}</span>
                     </Button>
                     {/* Loader Overlay */}
                     <GeneratingAILoader isLoading={isGenerating} />
@@ -423,9 +437,9 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
                     return (
                         <FormField key={field.id} control={control} name={`questions.${overallIndex}.answerText`} render={({ field: formField }) => (
                             <FormItem>
-                                <FormLabel>{`Question ${overallIndex + 1}: ${field.text}`}</FormLabel>
+                                <FormLabel>{t('report_generator.step3.question_label', 'Question {{index}}: {{text}}', { index: overallIndex + 1, text: field.text })}</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder="Provide a detailed answer..." className="min-h-[120px]" {...formField} />
+                                    <Textarea placeholder={t('report_generator.step3.question_placeholder', 'Provide a detailed answer...')} className="min-h-[120px]" {...formField} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -439,14 +453,21 @@ const Step3AnswerQuestions = ({ form, questionPage }) => {
     );
 };
 const Step4ReadyToGenerate = () => {
+    const { t } = useTranslation();
+    const checklistItems = [
+        t('report_generator.step4.check1', 'Make sure all report sections are completed.'),
+        t('report_generator.step4.check2', 'Review key highlights before generating.'),
+        t('report_generator.step4.check3', 'Ensure AI insights are included as needed.')
+    ];
+
     return (
         <div className="w-full h-full flex flex-col space-y-6 p-6 bg-gradient-to-br from-white to-gray-50 rounded-none shadow-none border-none">
             {/* Header */}
             <div className="flex flex-col space-y-2 text-center">
-                <h2 className="text-2xl font-semibold text-gray-800">Ready to Generate</h2>
+                <h2 className="text-2xl font-semibold text-gray-800">{t('report_generator.step4.title', 'Ready to Generate')}</h2>
                 <div className="flex justify-center mt-2">
                     <div className="flex items-center gap-2 bg-white border border-green-200 text-green-700 text-sm px-4 py-2 rounded-lg shadow-sm">
-                        <span>All sections are set. Click the button below to generate your report.</span>
+                        <span>{t('report_generator.step4.desc', 'All sections are set. Click the button below to generate your report.')}</span>
                     </div>
                 </div>
             </div>
@@ -467,20 +488,32 @@ const Step4ReadyToGenerate = () => {
         </div>
     );
 };
+// add this before GenerateReportPage component
+function getSteps(t) {
+  return [
+    { id: 1, title: t('report_generator.step1.name', 'Configuration') },
+    { id: 2, title: t('report_generator.step2.name', 'Data Selection') },
+    { id: 3, title: t('report_generator.step3.name', 'Insights') },
+    { id: 4, title: t('report_generator.step4.name', 'Generate') },
+  ];
+}
 
 
 const GenerateReportPage = () => {
     const [step, setStep] = useState(1);
+    const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
     const [masterData, setMasterData] = useState({ clients: [], masterReportQuestions: [] });
     const navigate = useNavigate();
     const [questionPage, setQuestionPage] = useState(0);
     const [includeWritingSection, setIncludeWritingSection] = useState(null); // null = not selected, true/false = user choice
     const [step3Skipped, setStep3Skipped] = useState(false);
+    const STEPS = getSteps(t); // <-- 4. GET TRANSLATED STEPS
+
 
     const form = useForm({
         resolver: zodResolver(reportSchemas),
-        defaultValues: { reportTitle: "Waste Management & Sustainability Report", clientId: undefined, dateRange: { from: undefined, to: undefined }, includedWasteTypeIds: [], questions: [], coverImage: null, logo: null },
+        defaultValues: { reportTitle: t('report_generator.default_title', 'Waste Management & Sustainability Report'), clientId: undefined, dateRange: { from: undefined, to: undefined }, includedWasteTypeIds: [], questions: [], coverImage: null, logo: null },
     });
 
     const { replace, fields: questionFields } = useFieldArray({ control: form.control, name: "questions" });
@@ -492,11 +525,18 @@ const GenerateReportPage = () => {
                 setMasterData({ clients: clientRes.data.clients, masterReportQuestions: masterRes.data.masterReportQuestions });
                 replace(masterRes.data.masterReportQuestions.map(q => ({ id: q.id, text: q.text, answerText: '' })));
             } catch (error) {
-                toast.error("Failed to load page configuration.");
+                toast.error(t('report_generator.toast_load_error', 'Failed to load page configuration.'));
             }
         };
         fetchInitialData();
-    }, [replace]);
+    }, [replace, t]);
+    useEffect(() => {
+        // Update default title if language changes
+        form.reset({
+            ...form.getValues(),
+            reportTitle: form.getValues('reportTitle') === 'Waste Management & Sustainability Report' ? t('report_generator.default_title', 'Waste Management & Sustainability Report') : form.getValues('reportTitle')
+        });
+    }, [t, form]);
 
     const onSubmit = async (data) => {
         setIsLoading(true);
@@ -520,11 +560,11 @@ const GenerateReportPage = () => {
             const response = await api.post('/reports/generate', payload);
             const newReport = response.data;
 
-            toast.success("Report generated successfully!");
+            toast.success(t('report_generator.toast_generate_success', 'Report generated successfully!'));
             navigate(`/app/reports/preview/${newReport.id}`);
 
         } catch (err) {
-            toast.error("Failed to generate report.");
+            toast.error(t('report_generator.toast_generate_error', 'Failed to generate report.'));
             console.error("Submission Error:", err);
         } finally {
             setIsLoading(false);
@@ -597,8 +637,8 @@ const GenerateReportPage = () => {
             <div className="flex-shrink-0">
                 <Link to="/app/reports" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors mb-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Reports</Link>
                 <div className="mb-6">
-                    <h1 className="text-3xl font-semibold text-gray-800">Generate a New Report</h1>
-                    <p className="text-gray-600 mt-1">Follow the steps to create a comprehensive report.</p>
+                    <h1 className="text-3xl font-semibold text-gray-800">{t('report_generator.title', 'Generate a New Report')}</h1>
+                    <p className="text-gray-600 mt-1">{t('report_generator.desc', 'Follow the steps to create a comprehensive report.')}</p>
                     <div className="pt-4">
                         <Progress value={progress} className="w-full [&>div]:bg-gradient-to-r [&>div]:from-green-500 [&>div]:to-emerald-600" />
                         <div className="flex justify-between mt-2">{STEPS.map((s, i) => (<div key={s.id} className="text-center w-1/4"><div className={`mx-auto h-6 w-6 rounded-full flex items-center justify-center ${step > i ? "bg-green-600 text-white" : "bg-gray-200 text-gray-600"}`}>{step > i ? <Check className="h-4 w-4" /> : s.id}</div><p className={`text-xs mt-1 ${step > i ? "text-gray-800 font-medium" : "text-gray-500"}`}>{s.title}</p></div>))}</div>
@@ -640,7 +680,7 @@ const GenerateReportPage = () => {
 
                         <Link to="/app/reports">
                             <Button type="button" variant="danger" className="bg-red-600 text-white">
-                                Cencel Generating Report
+                                {t('report_generator.btn_cancel', 'Cancel Generating Report')}
                             </Button>
                         </Link>
 
@@ -652,7 +692,7 @@ const GenerateReportPage = () => {
                                 onClick={handleBack}
                                 disabled={step === 1 && questionPage === 0}
                             >
-                                Back
+                                {t('report_generator.btn_back', 'Back')}
                             </Button>
 
                             {/* Only show Next button if NOT step 2.5 */}
@@ -664,8 +704,8 @@ const GenerateReportPage = () => {
                                     disabled={step === 3 && step3Skipped}
                                 >
                                     {step === 3 && !step3Skipped && questionPage < questionPageCount - 1
-                                        ? 'Next Questions'
-                                        : 'Next'}
+                                        ? t('report_generator.btn_next_questions', 'Next Questions')
+                                        : t('report_generator.btn_next', 'Next')}
                                 </Button>
                             )}
 
@@ -675,7 +715,8 @@ const GenerateReportPage = () => {
                                     disabled={isLoading}
                                     className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
                                 >
-                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Generate Report
+                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
+                                    {t('report_generator.btn_generate', 'Generate Report')}
                                 </Button>
                             )}
                         </div>

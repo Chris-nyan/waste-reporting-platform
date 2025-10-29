@@ -13,8 +13,10 @@ import AddUserDialog from '@/components/ui/Tenant/AddUserDialogue';
 import EditUserDialog from '@/components/ui/Tenant/EditUserDialogue';
 import { cn } from '@/lib/utils';
 import AuthContext, { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from 'react-i18next';
 
 const UserManagementPage = () => {
+    const { t } = useTranslation();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -40,7 +42,7 @@ const UserManagementPage = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         fetchUsers();
@@ -67,8 +69,8 @@ const UserManagementPage = () => {
         <div className="flex-1 space-y-6 p-4 lg:p-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-800 [text-shadow:1px_1px_1px_rgba(0,0,0,0.05)]">User Management</h2>
-                    <p className="text-gray-500">Add, edit, or remove users for your tenant.</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-800 [text-shadow:1px_1px_1px_rgba(0,0,0,0.05)]">{t('users.title', 'User Management')}</h2>
+                    <p className="text-gray-500">{t('users.description', 'Add, edit, or remove users for your tenant.')}</p>
                 </div>
                 <AddUserDialog users={users} onUserAdded={fetchUsers} />
             </div>
@@ -84,11 +86,11 @@ const UserManagementPage = () => {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-gray-200/60">
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Role</TableHead>
-                                        <TableHead>Joined</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>{t('users.table_col_name', 'Name')}</TableHead>
+                                        <TableHead>{t('users.table_col_email', 'Email')}</TableHead>
+                                        <TableHead>{t('users.table_col_role', 'Role')}</TableHead>
+                                        <TableHead>{t('users.table_col_joined', 'Joined')}</TableHead>
+                                        <TableHead className="text-right">{t('users.table_col_actions', 'Actions')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -122,7 +124,7 @@ const UserManagementPage = () => {
                                                                 onSelect={() => setUserToEdit(user)}
                                                                 className="cursor-pointer"
                                                             >
-                                                                <Edit className="mr-2 h-4 w-4" /> Edit User
+                                                                <Edit className="mr-2 h-4 w-4" /> {t('users.dropdown_edit', 'Edit User')}
                                                             </DropdownMenuItem>
 
                                                             <DropdownMenuSeparator />
@@ -141,7 +143,7 @@ const UserManagementPage = () => {
                                                                         : "text-gray-400 cursor-not-allowed"
                                                                     }`}
                                                             >
-                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete User
+                                                                <Trash2 className="mr-2 h-4 w-4" /> {t('users.dropdown_delete', 'Delete User')}
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
@@ -151,7 +153,7 @@ const UserManagementPage = () => {
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan="5" className="h-48 text-center text-gray-500">
-                                                No users found. Click "Add New User" to get started.
+                                                {t('users.table_no_users', 'No users found. Click "Add New User" to get started.')}
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -172,8 +174,8 @@ const UserManagementPage = () => {
                 open={!!userToDelete}
                 onOpenChange={(isOpen) => !isOpen && setUserToDelete(null)}
                 onConfirm={handleDeleteUser}
-                title="Are you sure you want to delete this user?"
-                description="This action cannot be undone. This will permanently delete the user's account."
+                title={t('users.confirm_delete_title', 'Are you sure you want to delete this user?')}
+                description={t('users.confirm_delete_desc', "This action cannot be undone. This will permanently delete the user's account.")}
             />
         </div>
     );

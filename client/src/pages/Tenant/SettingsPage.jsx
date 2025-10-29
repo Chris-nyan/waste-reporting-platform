@@ -60,8 +60,10 @@ const ProfileTab = () => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="bg-white/70 backdrop-blur-xl border border-gray-200/50 shadow-sm rounded-xl">
+            <CardHeader>
                 <CardTitle>{t('settings.profile.title', 'Personal Information')}</CardTitle>
                 <CardDescription>{t('settings.profile.description', 'Update your name and email address.')}</CardDescription>
+            </CardHeader>
                 <CardContent>
                     <Form {...profileForm}>
                         <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">

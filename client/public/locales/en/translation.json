@@ -55,6 +55,39 @@
       "facility_title": "Recycling by Facility",
       "facility_desc": "Total volume processed at each facility (kg).",
       "facility_legend": "Weight (kg)"
+    },
+    "tabs": {
+      "tenant": "Your Tenant Information",
+      "global": "Global Benchmarks"
+    },
+
+    "custom_chart": {
+      "title": "Custom Chart",
+      "desc": "Select the data and chart type you want to view.",
+      "select_data": "Select Data",
+      "select_type": "Chart Type",
+      "type_line": "Line",
+      "type_bar": "Bar",
+      "type_pie": "Pie",
+      "type_area": "Area",
+      "no_data": "No data available",
+      "legend_value": "Value"
+    },
+    
+    "global": {
+      "desc": "See how your impact compares to the entire platform."
+    },
+
+    "global_charts": {
+      "renewable_title": "Renewable Energy Share",
+      "renewable_desc": "Displays the percentage of global energy consumption derived from renewable sources such as solar, wind, hydro, and biomass.",
+      "renewable_legend": "Renewable Energy (% of total)",
+      "electricity_title": "Global Electricity Access",
+      "electricity_desc": "The share of the world’s population with access to electricity. A key indicator of global development and energy inclusion.",
+      "electricity_legend": "Access to Electricity (% population)",
+      "urban_title": "Urban Population Growth",
+      "urban_desc": "Shows the percentage of people living in urban areas globally. Urbanization affects infrastructure, emissions, and sustainability efforts.",
+      "urban_legend": "Urban Population (% of total)"
     }
   },
   "clients": {

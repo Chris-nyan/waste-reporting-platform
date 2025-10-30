@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "nodemon index.js",
     "translate": "node scripts/translateJsonFiles.js"
-    
   },
   "dependencies": {
     "@google-cloud/translate": "^9.2.1",
@@ -21,6 +20,7 @@
     "express": "^5.1.0",
     "fast-csv": "^5.0.5",
     "glob": "^11.0.3",
+    "i18n-iso-countries": "^7.14.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",

@@ -3,20 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import CO2HeatmapChart from "@/components/ui/CO2HeatmapChart";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // --- NEW ---
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 // Import new icons and chart types
 import { Users, Recycle, Weight, FileText, Loader2, Leaf, Download } from 'lucide-react';
 import {
     Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-    LineChart, Line, PieChart, Pie, Cell
+    LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import useAuth from '../../hooks/use-auth';
@@ -139,66 +140,74 @@ const TenantDashboardPage = () => {
     const [timeframe, setTimeframe] = useState('6m');
     const [customRange, setCustomRange] = useState({ start: null, end: null });
 
+    //-- Custom charts
+    const [customChartData, setCustomChartData] = useState([]); // data to display
+    const [customChartType, setCustomChartType] = useState('area'); // 'line', 'bar', 'pie'
+    const [availableChartData, setAvailableChartData] = useState([
+        { key: 'monthlyPickupTrend', label: 'Monthly Pickup Trend' },
+        { key: 'emissionsAvoidedBreakdown', label: 'Emissions Avoided by Material' },
+        // add other data options from `data?.charts`
+    ]);
+    const [selectedChartKey, setSelectedChartKey] = useState('emissionsAvoidedBreakdown');
+
     // --- Refs for all charts (Unchanged) ---
     const clientLeaderboardRef = useRef(null);
     const clientWasteBreakdownRef = useRef(null);
     const monthlyPickupTrendRef = useRef(null);
     const emissionsAvoidedRef = useRef(null);
-    const wasteByCategoryRef = useRef(null);
     const wasteByFacilityRef = useRef(null);
     const globalVsTenantTrendRef = useRef(null);
+    const globalEmissionsRef = useRef(null);
+    const globalVolumeRef = useRef(null);
     const globalCompositionRef = useRef(null);
+    const wasteByCategoryRef = useRef(null);
+    const customChartRef = useRef(null);
 
-    // --- useEffect hook for data fetching (Unchanged) ---
+
+
+    // --- useEffect hook for data fetching ---
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
                 setLoading(true);
 
-                // --- MODIFIED: Fetch tenant and global data in parallel ---
+                // Tenant dashboard data
                 let tenantUrl = `/dashboard/tenant?timeframe=${timeframe}`;
-                let globalUrl = `/dashboard/global?timeframe=${timeframe}`; // --- NEW ---
+
+                // World Bank global sustainability data (new)
+                let globalUrl = `/external/dashboard`;
 
                 if (timeframe === 'custom' && customRange.start && customRange.end) {
                     const start = customRange.start.toISOString();
                     const end = customRange.end.toISOString();
                     tenantUrl += `&start=${start}&end=${end}`;
-                    globalUrl += `&start=${start}&end=${end}`; // --- NEW
+                    globalUrl += `&start=${start}&end=${end}`;
                 }
 
-                // Use Promise.all to fetch both sets of data
+                // Fetch both sets of data in parallel
                 const [tenantResponse, globalResponse] = await Promise.all([
                     api.get(tenantUrl),
-                    api.get(globalUrl) // --- NEW: Fetch from global endpoint
+                    api.get(globalUrl)
                 ]);
 
                 setData(tenantResponse.data);
-                setGlobalData(globalResponse.data); // --- NEW: Set global data
+                setGlobalData(globalResponse.data);
 
             } catch (err) {
-                // If global fails, still show tenant data
-                if (err.response && err.response.config.url.includes('/dashboard/global')) {
-                    console.warn('Could not load global data. Displaying tenant data only.');
-                    // Try to get tenant data if it hasn't been set
-                    if (!data) {
-                        try {
-                            const tenantResponse = await api.get(tenantUrl);
-                            setData(tenantResponse.data);
-                        } catch (tenantError) {
-                            setError('Failed to fetch dashboard data. Please try again later.');
-                        }
-                    }
-                } else {
-                    setError('Failed to fetch dashboard data. Please try again later.');
-                }
-                console.error(err);
+                console.error("Error fetching dashboard data:", err);
+                setError('Failed to fetch dashboard data. Please try again later.');
             } finally {
                 setLoading(false);
             }
         };
 
         fetchDashboardData();
-    }, [timeframe, customRange, t]);
+    }, [timeframe, customRange]);
+    useEffect(() => {
+        if (selectedChartKey && data?.charts) {
+            setCustomChartData(data.charts[selectedChartKey] || []);
+        }
+    }, [selectedChartKey, data]);
 
     // --- Combine tenant trend data (Unchanged) ---
     const combinedTrendData = data?.charts?.monthlyPickupTrend?.map((tenantEntry) => {
@@ -281,320 +290,420 @@ const TenantDashboardPage = () => {
 
             {/* --- NEW: TABS STRUCTURE --- */}
             <div className="w-full bg-white/70 backdrop-blur-lg shadow-sm rounded-xl">
-            <Tabs defaultValue="tenant" className="w-full pt-4">
-                <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-flex bg-white/60 backdrop-blur-xl border border-gray-200/50 shadow-sm p-1 h-auto rounded-xl">
-                    <TabsTrigger className="px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg" value="tenant">{t('dashboard.tabs.tenant', 'Your Tenant Information')}</TabsTrigger>
-                    <TabsTrigger className="px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg" value="global">{t('dashboard.tabs.global', 'Global Benchmarks')}</TabsTrigger>
-                </TabsList>
+                <Tabs defaultValue="tenant" className="w-full pt-4">
+                    <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-flex bg-white/60 backdrop-blur-xl border border-gray-200/50 shadow-sm p-1 h-auto rounded-xl">
+                        <TabsTrigger className="px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg" value="tenant">{t('dashboard.tabs.tenant', 'Your Tenant Information')}</TabsTrigger>
+                        <TabsTrigger className="px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg" value="global">{t('dashboard.tabs.global', 'Global Benchmarks')}</TabsTrigger>
+                    </TabsList>
 
-                {/* --- TAB 1: Your Tenant Information --- */}
-                <TabsContent value="tenant" className="pt-4">
-                    {/* This div now wraps all 6 of your tenant-specific charts */}
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.leaderboard_title', 'Client Leaderboard')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.leaderboard_desc', 'Top clients by recycled volume in the period.')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={clientLeaderboardRef} chartData={data?.charts?.clientLeaderboard} baseFilename="client_leaderboard" t={t} />
-                            </CardHeader>
-                            <CardContent ref={clientLeaderboardRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>{t('dashboard.charts.leaderboard_col_client', 'Client Name')}</TableHead>
-                                                <TableHead>{t('dashboard.charts.leaderboard_col_reports', 'Reports Generated')}</TableHead>
-                                                <TableHead className="text-right">{t('dashboard.charts.leaderboard_col_total', 'Total (kg)')}</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {data?.charts?.clientLeaderboard?.slice(0, 5).map((client) => (
-                                                <TableRow key={client.clientName}>
-                                                    <TableCell className="font-medium">{client.clientName}</TableCell>
-                                                    <TableCell>{client.reportsGenerated}</TableCell>
-                                                    <TableCell className="text-right">{client.totalWeight.toLocaleString()}</TableCell>
+                    {/* --- TAB 1: Your Tenant Information --- */}
+                    <TabsContent value="tenant" className="pt-4">
+                        {/* This div now wraps all 6 of your tenant-specific charts */}
+                        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                            <Card className="shadow-sm">
+                                <CardHeader className="flex flex-row items-start justify-between">
+                                    <div>
+                                        <CardTitle className="text-gray-800">{t('dashboard.charts.leaderboard_title', 'Client Leaderboard')}</CardTitle>
+                                        <CardDescription>{t('dashboard.charts.leaderboard_desc', 'Top clients by recycled volume in the period.')}</CardDescription>
+                                    </div>
+                                    <ExportDropdown chartRef={clientLeaderboardRef} chartData={data?.charts?.clientLeaderboard} baseFilename="client_leaderboard" t={t} />
+                                </CardHeader>
+                                <CardContent ref={clientLeaderboardRef}>
+                                    {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>{t('dashboard.charts.leaderboard_col_client', 'Client Name')}</TableHead>
+                                                    <TableHead>{t('dashboard.charts.leaderboard_col_reports', 'Reports Generated')}</TableHead>
+                                                    <TableHead className="text-right">{t('dashboard.charts.leaderboard_col_total', 'Total (kg)')}</TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                )}
-                            </CardContent>
-                        </Card>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {data?.charts?.clientLeaderboard?.slice(0, 5).map((client) => (
+                                                    <TableRow key={client.clientName}>
+                                                        <TableCell className="font-medium">{client.clientName}</TableCell>
+                                                        <TableCell>{client.reportsGenerated}</TableCell>
+                                                        <TableCell className="text-right">{client.totalWeight.toLocaleString()}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.composition_title', 'Waste Composition by Top Clients')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.composition_desc', 'Breakdown of waste types for your most active clients.')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={clientWasteBreakdownRef} chartData={data?.charts?.clientWasteBreakdown?.data} baseFilename="client_waste_composition" t={t} />
-                            </CardHeader>
-                            <CardContent ref={clientWasteBreakdownRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <BarChart data={data?.charts?.clientWasteBreakdown?.data} layout="vertical" stackOffset="expand">
-                                            {/* ... Chart Content (unchanged) ... */}
-                                            <CartesianGrid horizontal={false} />
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="clientName" type="category" tickLine={false} axisLine={false} width={100} />
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Legend />
-                                            {data?.charts?.clientWasteBreakdown?.wasteTypes?.map((wasteType, index) => (
-                                                <Bar
-                                                    key={wasteType}
-                                                    dataKey={wasteType}
-                                                    stackId="a"
-                                                    fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            <Card className="shadow-sm">
+                                <CardHeader className="flex flex-row items-start justify-between">
+                                    <div>
+                                        <CardTitle className="text-gray-800">{t('dashboard.charts.composition_title', 'Waste Composition by Top Clients')}</CardTitle>
+                                        <CardDescription>{t('dashboard.charts.composition_desc', 'Breakdown of waste types for your most active clients.')}</CardDescription>
+                                    </div>
+                                    <ExportDropdown chartRef={clientWasteBreakdownRef} chartData={data?.charts?.clientWasteBreakdown?.data} baseFilename="client_waste_composition" t={t} />
+                                </CardHeader>
+                                <CardContent ref={clientWasteBreakdownRef}>
+                                    {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
+                                        <ChartContainer config={{}} className="h-[300px] w-full">
+                                            <BarChart data={data?.charts?.clientWasteBreakdown?.data} layout="vertical" stackOffset="expand">
+                                                {/* ... Chart Content (unchanged) ... */}
+                                                <CartesianGrid horizontal={false} />
+                                                <XAxis type="number" hide />
+                                                <YAxis dataKey="clientName" type="category" tickLine={false} axisLine={false} width={100} />
+                                                <Tooltip content={<ChartTooltipContent />} />
+                                                <Legend />
+                                                {data?.charts?.clientWasteBreakdown?.wasteTypes?.map((wasteType, index) => (
+                                                    <Bar
+                                                        key={wasteType}
+                                                        dataKey={wasteType}
+                                                        stackId="a"
+                                                        fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                                    />
+                                                ))}
+                                            </BarChart>
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card className="shadow-sm">
+                                <CardHeader className="flex flex-row items-start justify-between">
+                                    <div>
+                                        <CardTitle className="text-gray-800">{t('dashboard.charts.pickup_trend_title', 'Monthly Pickup Trend')}</CardTitle>
+                                        <CardDescription>{t('dashboard.charts.pickup_trend_desc', 'Total weight collected month-over-month (by pickup date).')}</CardDescription>
+                                    </div>
+                                    <ExportDropdown chartRef={monthlyPickupTrendRef} chartData={data?.charts?.monthlyPickupTrend} baseFilename="monthly_pickup_trend" t={t} />
+                                </CardHeader>
+                                <CardContent ref={monthlyPickupTrendRef}>
+                                    {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
+                                        <ChartContainer config={{}} className="h-[300px] w-full">
+                                            <LineChart data={data?.charts?.monthlyPickupTrend}>
+                                                {/* ... Chart Content (unchanged) ... */}
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis
+                                                    dataKey="name"
+                                                    type="category"
+                                                    interval={0}
+                                                    tick={{ fontSize: 12 }}
                                                 />
-                                            ))}
-                                        </BarChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
+                                                <YAxis tick={{ fontSize: 12 }} />
+                                                <Tooltip content={<ChartTooltipContent />} />
+                                                <Line type="monotone" dataKey="value" name={t('dashboard.charts.pickup_trend_legend', 'Collected (kg)')} stroke={CHART_COLORS[3]} strokeWidth={2} />
+                                            </LineChart>
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.pickup_trend_title', 'Monthly Pickup Trend')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.pickup_trend_desc', 'Total weight collected month-over-month (by pickup date).')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={monthlyPickupTrendRef} chartData={data?.charts?.monthlyPickupTrend} baseFilename="monthly_pickup_trend" t={t} />
-                            </CardHeader>
-                            <CardContent ref={monthlyPickupTrendRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <LineChart data={data?.charts?.monthlyPickupTrend}>
-                                            {/* ... Chart Content (unchanged) ... */}
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis
-                                                dataKey="name"
-                                                type="category"
-                                                interval={0}
-                                                tick={{ fontSize: 12 }}
-                                            />
-                                            <YAxis tick={{ fontSize: 12 }} />
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Line type="monotone" dataKey="value" name={t('dashboard.charts.pickup_trend_legend', 'Collected (kg)')} stroke={CHART_COLORS[3]} strokeWidth={2} />
-                                        </LineChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
+                            <Card className="shadow-sm">
+                                <CardHeader className="flex flex-row items-start justify-between">
+                                    <div>
+                                        <CardTitle className="text-gray-800">{t('dashboard.charts.emissions_title', 'Emissions Avoided by Material')}</CardTitle>
+                                        <CardDescription>{t('dashboard.charts.emissions_desc', 'Environmental impact based on material type (kg CO2e).')}</CardDescription>
+                                    </div>
+                                    <ExportDropdown chartRef={emissionsAvoidedRef} chartData={data?.charts?.emissionsAvoidedBreakdown} baseFilename="emissions_by_material" t={t} />
+                                </CardHeader>
+                                <CardContent ref={emissionsAvoidedRef}>
+                                    {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
+                                        <ChartContainer config={{}} className="h-[300px] w-full">
+                                            <BarChart data={data?.charts?.emissionsAvoidedBreakdown}>
+                                                {/* ... Chart Content (unchanged) ... */}
+                                                <CartesianGrid vertical={false} />
+                                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                                <YAxis tick={{ fontSize: 12 }} />
+                                                <Tooltip content={<ChartTooltipContent />} />
+                                                <Bar dataKey="value" name={t('dashboard.charts.emissions_legend', 'Emissions (kg CO2e)')} fill={CHART_COLORS[1]} />
+                                            </BarChart>
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.emissions_title', 'Emissions Avoided by Material')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.emissions_desc', 'Environmental impact based on material type (kg CO2e).')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={emissionsAvoidedRef} chartData={data?.charts?.emissionsAvoidedBreakdown} baseFilename="emissions_by_material" t={t} />
-                            </CardHeader>
-                            <CardContent ref={emissionsAvoidedRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <BarChart data={data?.charts?.emissionsAvoidedBreakdown}>
-                                            {/* ... Chart Content (unchanged) ... */}
-                                            <CartesianGrid vertical={false} />
-                                            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                                            <YAxis tick={{ fontSize: 12 }} />
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Bar dataKey="value" name={t('dashboard.charts.emissions_legend', 'Emissions (kg CO2e)')} fill={CHART_COLORS[1]} />
-                                        </BarChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
+                            <Card className="shadow-sm">
+                                <CardHeader className="flex flex-row items-start justify-between">
+                                    <div>
+                                        <CardTitle className="text-gray-800">{t('dashboard.charts.category_title', 'Waste by Category')}</CardTitle>
+                                        <CardDescription>{t('dashboard.charts.category_desc', 'High-level breakdown of all waste processed.')}</CardDescription>
+                                    </div>
+                                    <ExportDropdown chartRef={wasteByCategoryRef} chartData={data?.charts?.wasteByCategory} baseFilename="waste_by_category" t={t} />
+                                </CardHeader>
+                                <CardContent ref={wasteByCategoryRef}>
+                                    {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
+                                        <ChartContainer config={{}} className="h-[300px] w-full">
+                                            <PieChart>
+                                                {/* ... Chart Content (unchanged) ... */}
+                                                <Tooltip content={<ChartTooltipContent />} />
+                                                <Legend />
+                                                <Pie
+                                                    data={data?.charts?.wasteByCategory}
+                                                    dataKey="value"
+                                                    nameKey="name"
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    outerRadius={100}
+                                                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                                                >
+                                                    {data?.charts?.wasteByCategory?.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                            </PieChart>
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.category_title', 'Waste by Category')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.category_desc', 'High-level breakdown of all waste processed.')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={wasteByCategoryRef} chartData={data?.charts?.wasteByCategory} baseFilename="waste_by_category" t={t} />
-                            </CardHeader>
-                            <CardContent ref={wasteByCategoryRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <PieChart>
-                                            {/* ... Chart Content (unchanged) ... */}
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Legend />
-                                            <Pie
-                                                data={data?.charts?.wasteByCategory}
-                                                dataKey="value"
-                                                nameKey="name"
-                                                cx="50%"
-                                                cy="50%"
-                                                outerRadius={100}
-                                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                                            >
-                                                {data?.charts?.wasteByCategory?.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            <Card className="shadow-sm">
+                                <CardHeader className="flex flex-row items-start justify-between">
+                                    <div>
+                                        <CardTitle className="text-gray-800">{t('dashboard.charts.facility_title', 'Recycling by Facility')}</CardTitle>
+                                        <CardDescription>{t('dashboard.charts.facility_desc', 'Total volume processed at each facility (kg).')}</CardDescription>
+                                    </div>
+                                    <ExportDropdown chartRef={wasteByFacilityRef} chartData={data?.charts?.wasteByFacility} baseFilename="recycling_by_facility" t={t} />
+                                </CardHeader>
+                                <CardContent ref={wasteByFacilityRef}>
+                                    {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
+                                        <ChartContainer config={{}} className="h-[300px] w-full">
+                                            <BarChart data={data?.charts?.wasteByFacility}>
+                                                {/* ... Chart Content (unchanged) ... */}
+                                                <CartesianGrid vertical={false} />
+                                                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                                <YAxis tick={{ fontSize: 12 }} />
+                                                <Tooltip content={<ChartTooltipContent />} />
+                                                <Bar dataKey="value" name={t('dashboard.charts.facility_legend', 'Weight (kg)')} fill={CHART_COLORS[2]} />
+                                            </BarChart>
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                        </div>
+                        <div className="mt-6">
+                            <Card className="shadow-sm">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-gray-800">{t('dashboard.custom_chart.title', 'Custom Chart')}</CardTitle>
+                                        <CardDescription>{t('dashboard.custom_chart.desc', 'Select the data and chart type you want to view.')}</CardDescription>                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        {/* Select Data */}
+                                        <Select value={selectedChartKey} onValueChange={setSelectedChartKey}>
+                                            <SelectTrigger className="w-[180px]">
+                                                <SelectValue placeholder={t('dashboard.custom_chart.select_data', 'Select Data')} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {availableChartData.map(d => (
+                                                    <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>
                                                 ))}
-                                            </Pie>
-                                        </PieChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
+                                            </SelectContent>
+                                        </Select>
 
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.facility_title', 'Recycling by Facility')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.facility_desc', 'Total volume processed at each facility (kg).')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={wasteByFacilityRef} chartData={data?.charts?.wasteByFacility} baseFilename="recycling_by_facility" t={t} />
-                            </CardHeader>
-                            <CardContent ref={wasteByFacilityRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <BarChart data={data?.charts?.wasteByFacility}>
-                                            {/* ... Chart Content (unchanged) ... */}
-                                            <CartesianGrid vertical={false} />
-                                            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                                            <YAxis tick={{ fontSize: 12 }} />
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Bar dataKey="value" name={t('dashboard.charts.facility_legend', 'Weight (kg)')} fill={CHART_COLORS[2]} />
-                                        </BarChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </TabsContent>
+                                        {/* Select Chart Type */}
+                                        <Select value={customChartType} onValueChange={setCustomChartType}>
+                                            <SelectTrigger className="w-[140px]">
+                                                <SelectValue placeholder={t('dashboard.custom_chart.select_type', 'Chart Type')} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="line">{t('dashboard.custom_chart.type_line', 'Line')}</SelectItem>
+                                                <SelectItem value="bar">{t('dashboard.custom_chart.type_bar', 'Bar')}</SelectItem>
+                                                <SelectItem value="pie">{t('dashboard.custom_chart.type_pie', 'Pie')}</SelectItem>
+                                                <SelectItem value="area">{t('dashboard.custom_chart.type_area', 'Area')}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
 
-                {/* --- TAB 2: Global Benchmarks --- */}
-                <TabsContent value="global" className="space-y-6 pt-4">
-                    <p className="text-sm text-gray-500">
-                        {t('dashboard.global.desc', 'See how your impact compares to the entire platform.')}
-                    </p>
+                                        {/* Export */}
+                                        <ExportDropdown chartRef={customChartRef} chartData={customChartData} baseFilename="custom_chart" t={t} />
+                                    </div>
+                                </CardHeader>
 
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        {/* Volume Trend vs Tenant */}
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.global_trend_title', 'Your Volume vs. Platform Average')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.global_trend_desc', 'Monthly collected volume (kg) compared to the average.')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={globalVsTenantTrendRef} chartData={combinedTrendData} baseFilename="volume_vs_average_trend" t={t} />
-                            </CardHeader>
-                            <CardContent ref={globalVsTenantTrendRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <LineChart data={combinedTrendData}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="name" type="category" interval={0} tick={{ fontSize: 12 }} />
-                                            <YAxis tick={{ fontSize: 12 }} />
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Legend />
-                                            <Line type="monotone" dataKey={t('dashboard.charts.global_trend_legend_you', 'Your Volume (kg)')} stroke={CHART_COLORS[0]} strokeWidth={2} />
-                                            <Line type="monotone" dataKey={t('dashboard.charts.global_trend_legend_avg', 'Platform Average (kg)')} stroke={CHART_COLORS[3]} strokeWidth={2} strokeDasharray="5 5" />
-                                        </LineChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
+                                <CardContent ref={customChartRef}>
+                                    {loading ? (
+                                        <div className="flex items-center justify-center h-[300px]">
+                                            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                                        </div>
+                                    ) : customChartData.length === 0 ? (
+                                        <p className="text-gray-500">{t('dashboard.custom_chart.no_data', 'No data available')}</p>) : (
+                                        <ChartContainer className="h-[300px] w-full">
+                                            {customChartType === 'line' && (
+                                                <LineChart data={customChartData}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="name" />
+                                                    <YAxis />
+                                                    <Tooltip content={<ChartTooltipContent />} />
+                                                    <Line dataKey="value" name={t('dashboard.custom_chart.legend_value', 'Value')} stroke={CHART_COLORS[0]} />
+                                                </LineChart>
+                                            )}
+                                            {customChartType === 'bar' && (
+                                                <BarChart data={customChartData}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="name" />
+                                                    <YAxis />
+                                                    <Tooltip content={<ChartTooltipContent />} />
+                                                    <Bar dataKey="value" name={t('dashboard.custom_chart.legend_value', 'Value')} fill={CHART_COLORS[1]} />
+                                                </BarChart>
+                                            )}
+                                            {customChartType === 'pie' && (
+                                                <PieChart width={400} height={400}>
+                                                    <Tooltip content={<ChartTooltipContent />} />
+                                                    <Pie
+                                                        data={customChartData}
+                                                        dataKey="value"
+                                                        nameKey="name"
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        outerRadius={120}
+                                                        labelLine={false} // remove connecting lines
+                                                        label={({ name, percent }) => percent > 0.05 ? `${name}: ${(percent * 100).toFixed(1)}%` : ''} // only label big slices
+                                                    >
+                                                        {customChartData.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                                        ))}
+                                                    </Pie>
+                                                </PieChart>
+                                            )}
+                                            {customChartType === 'area' && (
+                                                <AreaChart data={customChartData}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="name" />
+                                                    <YAxis />
+                                                    <Tooltip content={<ChartTooltipContent />} />
+                                                    <Area dataKey="value" name={t('dashboard.custom_chart.legend_value', 'Value')} stroke={CHART_COLORS[2]} fill={CHART_COLORS[2]} />
+                                                </AreaChart>
+                                            )}
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
 
-                        {/* Global Waste Composition */}
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.global_composition_title', 'Global Waste Composition')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.global_composition_desc', 'Breakdown of all waste processed on the platform.')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={globalCompositionRef} chartData={globalData?.charts?.platformWasteComposition} baseFilename="global_waste_composition" t={t} />
-                            </CardHeader>
-                            <CardContent ref={globalCompositionRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <PieChart>
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Legend />
-                                            <Pie
-                                                data={globalData?.charts?.platformWasteComposition}
-                                                dataKey="value"
-                                                nameKey="name"
-                                                cx="50%"
-                                                cy="50%"
-                                                outerRadius={100}
-                                                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                                            >
-                                                {globalData?.charts?.platformWasteComposition?.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                        </PieChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
+                    {/* --- TAB 2: Global Benchmarks --- */}
+                    {/* --- TAB 2: Global Benchmarks --- */}
+                    <TabsContent value="global" className="space-y-6 pt-4">
+                        <p className="text-sm text-gray-500">
+                            {/* --- MODIFIED --- */}
+                            {t('dashboard.global.desc', 'See how your impact compares to the entire platform.')}
+                        </p>
+                        {/* 🌍 Global Sustainability Dashboard — World Bank Data */}
+                        <div className="grid grid-cols-1 gap-8">
 
-                        {/* --- NEW: Global Emissions Trend --- */}
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.global_emissions_title', 'Global Emissions Trend')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.global_emissions_desc', 'Monthly CO2e emissions across the platform.')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={emissionsAvoidedRef} chartData={globalData?.charts?.platformAverageEmissionsTrend} baseFilename="global_emissions_trend" t={t} />
-                            </CardHeader>
-                            <CardContent ref={emissionsAvoidedRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <LineChart data={globalData?.charts?.platformAverageEmissionsTrend}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="name" type="category" interval={0} tick={{ fontSize: 12 }} />
-                                            <YAxis tick={{ fontSize: 12 }} />
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Legend />
-                                            <Line type="monotone" dataKey="value" name={t('dashboard.charts.emissions_legend', 'Emissions (kg CO2e)')} stroke={CHART_COLORS[1]} strokeWidth={2} />
-                                        </LineChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
+                            {/* --- MODIFIED: Renewable Energy Consumption --- */}
+                            <Card className="shadow-sm">
+                                <CardHeader>
+                                    <CardTitle className="text-gray-900">{t('dashboard.global_charts.renewable_title', 'Renewable Energy Share')}</CardTitle>
+                                    <CardDescription>
+                                        {t('dashboard.global_charts.renewable_desc', 'Displays the percentage of global energy consumption derived from renewable sources such as solar, wind, hydro, and biomass.')}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent ref={globalVolumeRef}>
+                                    {loading ? (
+                                        <div className="flex items-center justify-center h-[350px]">
+                                            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                                        </div>
+                                    ) : (
+                                        <ChartContainer config={{}} className="h-[350px] w-full">
+                                            <AreaChart data={globalData?.charts?.renewableEnergyTrend}>
+                                                <defs>
+                                                    <linearGradient id="colorRenewable" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#22C55E" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                                <YAxis tick={{ fontSize: 12 }} />
+                                                <Tooltip content={<ChartTooltipContent />} />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="value"
+                                                    // --- MODIFIED ---
+                                                    name={t('dashboard.global_charts.renewable_legend', 'Renewable Energy (% of total)')}
+                                                    stroke="#16A34A"
+                                                    fillOpacity={1}
+                                                    fill="url(#colorRenewable)"
+                                                />
+                                            </AreaChart>
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                        {/* --- NEW: Global Monthly Composition (Stacked Bar / Heatmap) --- */}
-                        <Card className="shadow-sm">
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-800">{t('dashboard.charts.global_monthly_composition_title', 'Global Waste by Category')}</CardTitle>
-                                    <CardDescription>{t('dashboard.charts.global_monthly_composition_desc', 'Monthly breakdown of all waste categories across the platform.')}</CardDescription>
-                                </div>
-                                <ExportDropdown chartRef={wasteByCategoryRef} chartData={globalData?.charts?.globalMonthlyComposition?.data} baseFilename="global_monthly_composition" t={t} />
-                            </CardHeader>
-                            <CardContent ref={wasteByCategoryRef}>
-                                {loading ? <div className="flex items-center justify-center h-[300px]"><Loader2 className="h-8 w-8 animate-spin text-gray-500" /></div> : (
-                                    <ChartContainer config={{}} className="h-[300px] w-full">
-                                        <BarChart data={globalData?.charts?.globalMonthlyComposition?.data}>
-                                            <CartesianGrid vertical={false} />
-                                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                            <YAxis tick={{ fontSize: 12 }} />
-                                            <Tooltip content={<ChartTooltipContent />} />
-                                            <Legend />
-                                            {globalData?.charts?.globalMonthlyComposition?.keys?.map((key, index) => (
-                                                <Bar key={key} dataKey={key} stackId="a" fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                                            ))}
-                                        </BarChart>
-                                    </ChartContainer>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </TabsContent>
-            </Tabs>
+                            {/* --- MODIFIED: Electricity Access Trend --- */}
+                            <Card className="shadow-sm">
+                                <CardHeader>
+                                    <CardTitle className="text-gray-900">{t('dashboard.global_charts.electricity_title', 'Global Electricity Access')}</CardTitle>
+                                    <CardDescription>
+                                        {t('dashboard.global_charts.electricity_desc', 'The share of the world’s population with access to electricity. A key indicator of global development and energy inclusion.')}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {loading ? (
+                                        <div className="flex items-center justify-center h-[350px]">
+                                            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                                        </div>
+                                    ) : (
+                                        <ChartContainer config={{}} className="h-[350px] w-full">
+                                            <LineChart data={globalData?.charts?.electricityAccessTrend}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                                <YAxis tick={{ fontSize: 12 }} />
+                                                <Tooltip content={<ChartTooltipContent />} />
+                                                <Legend />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="value"
+                                                    // --- MODIFIED ---
+                                                    name={t('dashboard.global_charts.electricity_legend', 'Access to Electricity (% population)')}
+                                                    stroke="#3B82F6"
+                                                    strokeWidth={3}
+                                                />
+                                            </LineChart>
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* --- MODIFIED: Urbanization Trend --- */}
+                            <Card className="shadow-sm">
+                                <CardHeader>
+                                    <CardTitle className="text-gray-900">{t('dashboard.global_charts.urban_title', 'Urban Population Growth')}</CardTitle>
+                                    <CardDescription>
+                                        {t('dashboard.global_charts.urban_desc', 'Shows the percentage of people living in urban areas globally. Urbanization affects infrastructure, emissions, and sustainability efforts.')}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {loading ? (
+                                        <div className="flex items-center justify-center h-[350px]">
+                                            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+                                        </div>
+                                    ) : (
+                                        <ChartContainer config={{}} className="h-[350px] w-full">
+                                            <AreaChart data={globalData?.charts?.urbanPopulationTrend}>
+                                                <defs>
+                                                    <linearGradient id="colorUrban" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                                <YAxis tick={{ fontSize: 12 }} />
+                                                <Tooltip content={<ChartTooltipContent />} />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="value"
+                                                    // --- MODIFIED ---
+                                                    name={t('dashboard.global_charts.urban_legend', 'Urban Population (% of total)')}
+                                                    stroke="#F59E0B"
+                                                    fill="url(#colorUrban)"
+                                                    fillOpacity={1}
+                                                />
+                                            </AreaChart>
+                                        </ChartContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </div>
-
-            {/* --- OLD CHART SECTIONS (REMOVED) --- */}
-            {/* The h3 and div grids that were here are now inside the TabsContent blocks above */}
-            
-
         </div>
     );
 };

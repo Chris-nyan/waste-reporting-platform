@@ -7,5 +7,5 @@
 # Google Cloud credentials
 google-credentials.json
 
-
-# /generated/prisma
+# Prisma generated migration files
+/generated/prisma

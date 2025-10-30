@@ -55,6 +55,36 @@
       "facility_title": "Tái chế theo Cơ sở",
       "facility_desc": "Tổng khối lượng xử lý tại mỗi cơ sở (kg).",
       "facility_legend": "Cân nặng (kg)"
+    },
+    "tabs": {
+      "tenant": "Thông tin người thuê nhà của bạn",
+      "global": "Tiêu chuẩn toàn cầu"
+    },
+    "custom_chart": {
+      "title": "Biểu đồ tùy chỉnh",
+      "desc": "Chọn dữ liệu và loại biểu đồ bạn muốn xem.",
+      "select_data": "Chọn dữ liệu",
+      "select_type": "Loại biểu đồ",
+      "type_line": "Đường kẻ",
+      "type_bar": "Thanh",
+      "type_pie": "Bánh",
+      "type_area": "Khu vực",
+      "no_data": "Không có dữ liệu có sẵn",
+      "legend_value": "Giá trị"
+    },
+    "global": {
+      "desc": "Xem tác động của bạn so với toàn bộ nền tảng như thế nào."
+    },
+    "global_charts": {
+      "renewable_title": "Chia sẻ năng lượng tái tạo",
+      "renewable_desc": "Hiển thị tỷ lệ tiêu thụ năng lượng toàn cầu có nguồn gốc từ các nguồn tái tạo như năng lượng mặt trời, gió, thủy điện và sinh khối.",
+      "renewable_legend": "Năng lượng tái tạo (% tổng số)",
+      "electricity_title": "Tiếp cận điện toàn cầu",
+      "electricity_desc": "Tỷ lệ dân số thế giới được tiếp cận điện. Một chỉ số quan trọng về phát triển toàn cầu và mức độ bao phủ năng lượng.",
+      "electricity_legend": "Tiếp cận điện (% dân số)",
+      "urban_title": "Tăng trưởng dân số đô thị",
+      "urban_desc": "Hiển thị tỷ lệ dân số sống ở khu vực thành thị trên toàn cầu. Đô thị hóa ảnh hưởng đến cơ sở hạ tầng, khí thải và các nỗ lực phát triển bền vững.",
+      "urban_legend": "Dân số đô thị (% tổng số)"
     }
   },
   "clients": {
